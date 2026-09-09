@@ -1,6 +1,6 @@
 # Reach
 
-![Reach 首页](docs/screenshots/home.png)
+![Reach](docs/screenshots/hero.png)
 
 **所不及者，可达于人。**
 把一条 X / YouTube 的帖子——正文、图片、视频、评论——镜像成一条可控的私密链接；也可以发布自己撰写的文章，并看见访客究竟是怎样阅读它们的。
@@ -17,6 +17,7 @@
 
 | | |
 | --- | --- |
+| ![镜像页](docs/screenshots/mirror.png) 镜像页：X 帖子正文与逐段翻译、视频、互动数据、精选评论 | ![首页](docs/screenshots/home.png) 首页（浅色主题） |
 | ![文章页](docs/screenshots/article.png) 文章页：目录、阅读进度、封面与正文 | ![归档](docs/screenshots/article-archive.png) 文章归档 `/post` |
 | ![创建镜像](docs/screenshots/admin-create-mirror.png) 创建镜像：粘贴链接 → 抓取预览 → 勾选保留的评论 | ![镜像管理](docs/screenshots/admin-mirrors.png) 镜像管理：每条内容下的分享链接与访问统计 |
 | ![分享链接](docs/screenshots/admin-share-link.png) 新增分享链接：有效期、总次数、独立访客数、阅后即焚 | ![会话回放](docs/screenshots/admin-session-replay.png) 会话回放：按访客视口还原，附点击热力图 |

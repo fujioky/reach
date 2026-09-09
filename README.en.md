@@ -1,6 +1,6 @@
 # Reach
 
-![Reach home page](docs/screenshots/home.png)
+![Reach](docs/screenshots/hero.png)
 
 **Reach turns out-of-reach posts into links anyone can open.**
 Mirror an X or YouTube post — text, images, video, comments — into a private share link, publish your own articles, and watch how visitors actually read them.
@@ -17,6 +17,7 @@ Demo: **https://reach.fujioky.com**
 
 | | |
 | --- | --- |
+| ![Mirror page](docs/screenshots/mirror.png) Mirror page: X post with inline translation, video, engagement stats, curated comments | ![Home](docs/screenshots/home.png) Home page (light theme) |
 | ![Article page](docs/screenshots/article.png) Article page: table of contents, reading progress, cover and body | ![Archive](docs/screenshots/article-archive.png) Article archive at `/post` |
 | ![Create mirror](docs/screenshots/admin-create-mirror.png) Create a mirror: paste a link → fetch preview → pick the comments to keep | ![Mirrors](docs/screenshots/admin-mirrors.png) Mirror management: share links and visit stats per item |
 | ![Share link](docs/screenshots/admin-share-link.png) New share link: expiry, total opens, unique visitors, burn after read | ![Session replay](docs/screenshots/admin-session-replay.png) Session replay sized to the visitor's viewport, with click heatmap |
