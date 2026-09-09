@@ -7,7 +7,7 @@
 
 演示站：**https://reach.fujioky.com**
 
-> **先部署抓取端。** Reach 不直接抓平台内容，依赖 [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) 里的代理（`proxy/`）：它在 Agent Reach 之上加了 Reach 需要的 X / YouTube 定制解析和公开访问接口。直接装上游 agent-reach 是不能用的，部署步骤见 [proxy/README.zh-CN.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)。
+> **先部署抓取端。** Reach 不直接抓平台内容，依赖 [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) 里的代理（`proxy/`）：它在 Agent Reach 之上加了 Reach 需要的 X / YouTube 定制解析和公开访问接口。直接装上游 agent-reach 是不能用的，部署步骤见 [proxy/README.zh-CN.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)。 视频转发 / 转存通道建议同机部署 [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)：googlevideo 直链绑定提取时的出口 IP，只有抓取端所在机器能取流。
 
 ---
 
@@ -16,7 +16,7 @@
 **镜像** —— 贴上帖子链接，得到一份自托管副本。
 
 - 通过上游 *Agent Reach* 接口抓取 X（Twitter）帖子与 YouTube 视频，统一归一化为同一套内容模型：标题、正文、作者、媒体、互动数据、评论。
-- 视频重新托管：可经本站转发（`/api/proxy-video`）、经外部反向代理转发，或上传到任意 S3 兼容存储桶（Cloudflare R2、AWS S3、MinIO）并从自定义域名分发。上游取流按有界分块进行，各通道之间自动故障转移。
+- 视频重新托管：可经本站转发（`/api/proxy-video`）、经外部反向代理转发（参考实现 [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)），或上传到任意 S3 兼容存储桶（Cloudflare R2、AWS S3、MinIO）并从自定义域名分发。上游取流按有界分块进行，各通道之间自动故障转移。
 - 分享链接（`/s/<token>`）支持限期、限次、阅后即焚。每条镜像保留版本历史，刷新前可预览差异，随时回滚。
 - 字幕：播放器内直接显示最佳字幕轨，非中文字幕逐条经 DeepL 翻译；正文与评论同样按需翻译，结果缓存在数据库。
 

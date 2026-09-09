@@ -44,3 +44,7 @@ tsconfig.tsbuildinfo
 
 # Keep the example env file tracked
 !.env.local.example
+.vercel
+
+# reach-dlproxy source dropped in for reference, lives in its own repo
+dl-proxy/

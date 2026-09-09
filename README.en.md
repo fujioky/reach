@@ -7,7 +7,7 @@ Mirror an X or YouTube post — text, images, video, comments — into a private
 
 Demo: **https://reach.fujioky.com**
 
-> **Deploy the fetcher first.** Reach does not scrape platforms itself; it depends on the proxy in [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) (`proxy/`), which adds the X / YouTube parsing and the public API Reach needs on top of Agent Reach. A stock upstream install will not work. Setup steps: [proxy/README.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md).
+> **Deploy the fetcher first.** Reach does not scrape platforms itself; it depends on the proxy in [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) (`proxy/`), which adds the X / YouTube parsing and the public API Reach needs on top of Agent Reach. A stock upstream install will not work. Setup steps: [proxy/README.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md). For the video proxy / re-hosting channel, deploy [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy) on the same host: googlevideo links are bound to the egress IP that extracted them, so only the fetcher's machine can pull the stream.
 
 ---
 
@@ -16,7 +16,7 @@ Demo: **https://reach.fujioky.com**
 **Mirrors** — paste a post URL, get a self-hosted copy.
 
 - Fetches X (Twitter) posts and YouTube videos through an upstream *Agent Reach* API, then normalises them into one content model: title, body, author, media, engagement stats, comments.
-- Video is re-hosted: streamed through the app (`/api/proxy-video`), through an optional external reverse proxy, or uploaded to any S3-compatible bucket (Cloudflare R2, AWS S3, MinIO) and served from a CDN domain. Upstream streams are pulled in bounded chunks with automatic failover between hops.
+- Video is re-hosted: streamed through the app (`/api/proxy-video`), through an optional external reverse proxy (reference implementation: [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)), or uploaded to any S3-compatible bucket (Cloudflare R2, AWS S3, MinIO) and served from a CDN domain. Upstream streams are pulled in bounded chunks with automatic failover between hops.
 - Share links (`/s/<token>`) can expire by time, by view count, or burn after a single read. Each mirror keeps a version history with preview-before-apply refresh and rollback.
 - Subtitles: the best caption track is shown in-player; non-Chinese tracks are translated cue-by-cue via DeepL. Post text and comments get the same on-demand translation, cached in the database.
 
