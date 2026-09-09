@@ -1,0 +1,38 @@
+/* app/s/[token]/visitor.css
+ * Visitor-side responsive CSS for media queries that can't be expressed
+ * with inline Tailwind classes alone.
+ *
+ * Token system, a11y rules (focus, touch, reduced-motion), and spinner
+ * animation are in globals.css — not duplicated here.
+ */
+
+/* ── Visitor card — Twitter 600px default, YouTube 800px ───────── */
+.visitor-card {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.visitor-card.youtube {
+  max-width: 800px;
+}
+
+/* Mobile: card 100% width, reduced padding (VIEW-03) */
+@media (max-width: 640px) {
+  .visitor-card,
+  .visitor-card.youtube {
+    max-width: 100%;
+    padding: 16px;
+  }
+}
+
+
+/* ── Spinner — video delay hint (D-43) ────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
