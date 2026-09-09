@@ -84,15 +84,15 @@ npm run dev
 
 ### Agent Reach
 
-Reach 自身不抓取平台内容，而是调用一个基于 Agent Reach 工具链搭建的 HTTP 服务，接口约定：
+Reach 自身不抓取平台内容，而是调用一个封装了 [Agent Reach](https://github.com/Panniantong/agent-reach) 工具链的 HTTP 服务。直接部署上游是**不够**的：上游是给 AI Agent 用的本地能力层，没有任何包装 API。请部署 **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)** 里的代理（`proxy/`，见其 [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)）。它加入了 Reach 依赖的 X/Twitter 与 YouTube 定制解析——统一内容结构、全部渐进式 YouTube 视频源、带时间轴的 VTT 字幕、回复串、结构化错误类型——并把工具链通过下面这个接口和一个带 OAuth 的 MCP 服务（可接入 ChatGPT / Claude 连接器）公开出去：
 
 ```
-GET {base}/healthz                                   → { "ok": true }
+GET {base}/healthz                                   → { "ok": true, ... }
 GET {base}/http/?platform=x|youtube&query=<url>&pwd=<pwd>
-                                                     → { "item": { ... }, "errors": [] }
+                                                     → { "ok": true, "item": { ... }, "errors": [] }
 ```
 
-`item` 包含帖子正文、作者、媒体（YouTube 附带全部 yt-dlp 视频源）、互动数据、评论，以及可选的 `transcript` / `transcript_vtt` 字段。`lib/fetcher/platforms/` 中的适配器负责归一化，错误类型映射见 `lib/fetcher/errors.ts`。限流（429）与网络错误会按指数退避重试。
+`item` 包含帖子正文、作者、媒体（YouTube 附带全部 yt-dlp 视频源）、互动数据、评论，以及可选的 `transcript` / `transcript_lang` / `transcript_vtt` 字段。`lib/fetcher/platforms/` 中的适配器负责归一化，错误类型映射见 `lib/fetcher/errors.ts`。限流（429）与网络错误会按指数退避重试。
 
 ## 部署到 Vercel
 

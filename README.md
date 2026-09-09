@@ -84,15 +84,15 @@ Run the test suite with `npm test`.
 
 ### Agent Reach
 
-Reach does not scrape platforms itself. It talks to an HTTP service built on the Agent Reach toolchain that exposes:
+Reach does not scrape platforms itself. It calls an HTTP service that wraps the [Agent Reach](https://github.com/Panniantong/agent-reach) toolchain. A stock upstream install is **not** enough: upstream is a local capability layer for AI agents with no wrapping API. Deploy the proxy from **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)** (`proxy/`, see its [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md)) instead. It adds the custom X/Twitter and YouTube parsing Reach depends on — one normalised item, every progressive YouTube video source, subtitles as timed VTT, threaded comments, structured error kinds — and exposes the toolchain publicly through this endpoint and an MCP server with OAuth (usable from ChatGPT / Claude connectors):
 
 ```
-GET {base}/healthz                                   → { "ok": true }
+GET {base}/healthz                                   → { "ok": true, ... }
 GET {base}/http/?platform=x|youtube&query=<url>&pwd=<pwd>
-                                                     → { "item": { ... }, "errors": [] }
+                                                     → { "ok": true, "item": { ... }, "errors": [] }
 ```
 
-`item` carries the post text, author, media (with all yt-dlp video sources for YouTube), engagement stats, comments, and optional `transcript` / `transcript_vtt` fields. The adapters in `lib/fetcher/platforms/` normalise it; error kinds map to `lib/fetcher/errors.ts`. Rate limits (429) and network errors are retried with exponential backoff.
+`item` carries the post text, author, media (with all yt-dlp video sources for YouTube), engagement stats, comments, and optional `transcript` / `transcript_lang` / `transcript_vtt` fields. The adapters in `lib/fetcher/platforms/` normalise it; error kinds map to `lib/fetcher/errors.ts`. Rate limits (429) and network errors are retried with exponential backoff.
 
 ## Deploying to Vercel
 
