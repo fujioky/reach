@@ -7,7 +7,7 @@
 
 演示站：**https://reach.fujioky.com**
 
-> **先部署抓取端。** Reach 不直接抓平台内容，依赖 [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) 里的代理（`proxy/`）：它在 Agent Reach 之上加了 Reach 需要的 X / YouTube 定制解析和公开访问接口。直接装上游 agent-reach 是不能用的，部署步骤见 [proxy/README.zh-CN.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)。 视频转发 / 转存通道建议同机部署 [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)：googlevideo 直链绑定提取时的出口 IP，只有抓取端所在机器能取流。
+> **先部署抓取端。** Reach 不直接抓平台内容，依赖 [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) 里的代理（`proxy/`）：它在 Agent Reach 之上加了 Reach 需要的 X / YouTube 定制解析和公开访问接口。直接装上游 agent-reach 是不能用的，部署步骤见 [proxy/README.zh-CN.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)。 视频转发 / 转存通道可部署 [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)。
 
 ---
 

@@ -7,7 +7,7 @@ Mirror an X or YouTube post — text, images, video, comments — into a private
 
 Demo: **https://reach.fujioky.com**
 
-> **Deploy the fetcher first.** Reach does not scrape platforms itself; it depends on the proxy in [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) (`proxy/`), which adds the X / YouTube parsing and the public API Reach needs on top of Agent Reach. A stock upstream install will not work. Setup steps: [proxy/README.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md). For the video proxy / re-hosting channel, deploy [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy) on the same host: googlevideo links are bound to the egress IP that extracted them, so only the fetcher's machine can pull the stream.
+> **Deploy the fetcher first.** Reach does not scrape platforms itself; it depends on the proxy in [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) (`proxy/`), which adds the X / YouTube parsing and the public API Reach needs on top of Agent Reach. A stock upstream install will not work. Setup steps: [proxy/README.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md). For the video proxy / re-hosting channel, deploy [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy).
 
 ---
 
