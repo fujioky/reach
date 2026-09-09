@@ -1,0 +1,1 @@
+ALTER TABLE "visit_events" DROP COLUMN "ip_hash";

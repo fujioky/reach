@@ -1,0 +1,46 @@
+# Local-only references (user-specific absolute paths, never commit)
+.local/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Env / secrets
+.env
+.env.local
+*.pid
+*.log
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# Vercel
+.vercel/
+
+# Node
+node_modules/
+
+# Test artifacts
+test.mp4
+*.mp4.bak
+.env*
+
+# Build artifacts
+tsconfig.tsbuildinfo
+.vercel/
+.agents/.orca/
+.orca/
+
+# Keep the example env file tracked
+!.env.local.example

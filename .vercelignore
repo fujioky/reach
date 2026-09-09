@@ -1,0 +1,15 @@
+# Explicit upload exclusions for `vercel deploy` (CLI uploads the working
+# directory; huge local caches/media here were breaking the 100MB file limit).
+.git
+.next
+node_modules
+.vercel
+.orca
+.agents
+.local
+.venv
+venv
+__pycache__
+*.log
+*.mp4
+.DS_Store

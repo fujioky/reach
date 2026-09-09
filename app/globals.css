@@ -1,0 +1,600 @@
+/* app/globals.css
+ * Reach 品牌 token 系统 — Tailwind CSS v4 @theme + 亮/暗双主题 + 平台 variant。
+ *
+ * 设计真源：docs/Reach Redesign.html（v0.dev 画布导出）
+ * 决策依据：D-75（主题 token 映射）、D-81（Tailwind v4 + @theme）、D-82（字体）、D-83（弧线 wordmark）
+ *
+ * Token 命名约定：
+ *   --color-brand       Reach Indigo 主色
+ *   --color-brand-hover  hover 态
+ *   --color-brand-dark   暗色主题下的提亮品牌色
+ *   --color-tint         品牌淡色背景
+ *   --color-ink          主文字色（亮色近黑，暗色近白）
+ *   --color-muted        次要文字色
+ *   --color-subtle       三级文字色
+ *   --color-paper        页面背景（亮色 Paper #FAFAF8）
+ *   --color-surface      卡片/面板背景
+ *   --color-surface-2    二级表面（折叠区/输入框背景等）
+ *   --color-border       分割线/边框
+ *   --color-success      成功/有效状态
+ *   --color-danger       危险/撤销/过期
+ *   --color-warning      警告/接近配额
+ */
+
+@import 'tailwindcss';
+
+/* ── 亮色主题 token（默认）────────────────────────────────────── */
+@theme {
+  /* Reach Indigo 品牌色 */
+  --color-brand: #5b4fe9;
+  --color-brand-hover: #4a3fd4;
+  --color-brand-dark: #8b82ff;
+  --color-tint: #f1f0fd;
+
+  /* 中性色 — 亮色 */
+  --color-ink: #17161b;
+  --color-muted: #6c6b75;
+  --color-subtle: #9c9ba6;
+  --color-paper: #fafaf8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f2f7;
+  --color-border: #ecebf1;
+
+  /* 语义色 */
+  --color-success: #0fa968;
+  --color-danger: #e5484d;
+  --color-warning: #e0a800;
+
+  /* Admin 侧边栏 — 固定深色，不随主题变化 */
+  --color-sidebar: #0f0e13;
+  --color-sidebar-text: #e7e6ec;
+  --color-sidebar-muted: #b6b5bf;
+  --color-sidebar-label: #5a5963;
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+
+  /* 字体 — next/font 注入 CSS 变量，这里映射到 Tailwind font-* 工具类 */
+  --font-sans: var(--font-noto), 'Noto Sans SC', system-ui, sans-serif;
+  --font-display: var(--font-grotesk), 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+
+  /* 圆角体系 — 4 / 8 / 12 / 14 / 16 */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* 阴影体系 — sm / md / lg / brand（查看原文按钮专用品牌色阴影）*/
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-brand: 0 4px 14px rgba(91, 79, 233, 0.3);
+  --shadow-brand-lg: 0 6px 20px rgba(91, 79, 233, 0.32);
+
+  /* 动画 — spinner（从 visitor.css 迁移）*/
+  --animate-spin: spin 0.8s linear infinite;
+}
+
+/* ── 暗色主题 token ──────────────────────────────────────────── */
+/* D-75: 暗色 #0D0D11 背景，#F3F2F7 文字，#16161C surface，#272730 border。
+   品牌色提亮 #5B4FE9 → #8B82FF，tint 加深 #F1F0FD → #1C1A35。 */
+@variant dark (&:where(.dark, .dark *));
+
+.dark {
+  --color-brand: #8b82ff;
+  --color-brand-hover: #a89fff;
+  --color-brand-dark: #8b82ff;
+  --color-tint: #1c1a35;
+
+  --color-ink: #f3f2f7;
+  --color-muted: #9a99a6;
+  --color-subtle: #6e6d79;
+  --color-paper: #0d0d11;
+  --color-surface: #16161c;
+  --color-surface-2: #1c1c22;
+  --color-border: #272730;
+
+  --color-success: #0fa968;
+  --color-danger: #ff5252;
+  --color-warning: #e0a800;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.18);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --shadow-brand: 0 4px 14px rgba(139, 130, 255, 0.3);
+  --shadow-brand-lg: 0 6px 20px rgba(139, 130, 255, 0.32);
+}
+
+/* ── 平台 variant — x: / yt: ─────────────────────────────────── */
+/* D-81: @custom-variant 处理平台切换。通过 data-platform 属性选择。
+   用法：<div data-platform="x" class="x:bg-... yt:bg-..."> */
+@custom-variant x (&:where([data-platform='x'], [data-platform='x'] *));
+@custom-variant yt (&:where([data-platform='youtube'], [data-platform='youtube'] *));
+
+/* ── 基础重置 + 全局样式 ─────────────────────────────────────── */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* 标题 / 品牌 / 数字用 Space Grotesk */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* Focus states — 可见焦点（a11y，从 visitor.css 迁移）*/
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Touch — 消除双击缩放延迟（a11y，从 visitor.css 迁移）*/
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+
+  /* Reduced motion — 尊重用户偏好（a11y，从 visitor.css 迁移）*/
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ── Spinner 动画（从 visitor.css 迁移）──────────────────────── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── 设计系统工具类（Landing 设计语言全局复用）──────────────── */
+@layer components {
+  .ds-section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-brand);
+  }
+
+  .ds-page-heading {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--color-ink);
+  }
+
+  @media (min-width: 768px) {
+    .ds-page-heading {
+      font-size: 1.875rem;
+    }
+  }
+
+  .ds-page-subtitle {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.625;
+    color: var(--color-muted);
+  }
+
+  .ds-card {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border);
+    background-color: color-mix(in srgb, var(--color-surface) 80%, transparent);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .ds-card-interactive {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border);
+    background-color: color-mix(in srgb, var(--color-surface) 80%, transparent);
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  }
+
+  .ds-card-interactive:hover {
+    border-color: color-mix(in srgb, var(--color-brand) 25%, var(--color-border));
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+
+  .ds-icon-box {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background-color: var(--color-tint);
+    color: var(--color-brand);
+  }
+
+  .ds-btn-primary {
+    @apply inline-flex items-center justify-center rounded-md border-0 bg-brand px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-brand transition-colors hover:bg-brand-hover;
+  }
+
+  .ds-btn-ink {
+    @apply inline-flex items-center justify-center rounded-sm border-0 bg-ink px-4 py-2 text-sm font-medium text-paper no-underline transition-opacity hover:opacity-90;
+  }
+
+  .ds-ghost-nav {
+    border-radius: var(--radius-sm);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  .ds-ghost-nav:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-ink);
+  }
+
+  .ds-input {
+    @apply w-full rounded-md border border-border bg-surface px-3.5 py-3 text-sm text-ink outline-none transition-colors placeholder:text-subtle focus:border-brand;
+  }
+
+  .ds-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid color-mix(in srgb, var(--color-brand) 15%, transparent);
+    background-color: var(--color-tint);
+    padding: 0.375rem 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-brand-hover);
+  }
+
+  .ds-cta-band {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-ink);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+  }
+
+  .dark .ds-cta-band {
+    background-color: var(--color-surface);
+  }
+}
+
+/* ── 文章正文排版（Markdown 渲染）────────────────────────────── */
+/* ArticleBody 只输出语义标签，排版规则集中在这里，编辑器预览与公开页
+   共用同一套样式，所见即所得。刻意不引 @tailwindcss/typography：
+   这里要的是与 Reach token 体系一致的中文排版，而非通用 prose。
+   正文 17px/1.9：中文字面比拉丁字母满，行距要比英文博客更松才不挤。 */
+.article-prose {
+  font-size: 1.0625rem;
+  line-height: 1.9;
+  color: var(--color-ink);
+  overflow-wrap: break-word;
+  /* 中西文混排时自动加间隙，标点不再贴着字母 */
+  text-spacing-trim: trim-start;
+  hanging-punctuation: allow-end;
+}
+
+@media (max-width: 640px) {
+  .article-prose {
+    font-size: 1rem;
+    line-height: 1.85;
+  }
+}
+
+.article-prose > *:first-child {
+  margin-top: 0;
+}
+
+.article-prose > *:last-child {
+  margin-bottom: 0;
+}
+
+.article-prose p {
+  margin: 1.3em 0;
+}
+
+/* 首段稍大，是编辑排版里常见的入口引导 */
+.article-prose > p:first-child {
+  font-size: 1.09em;
+  color: var(--color-ink);
+}
+
+.article-prose h1,
+.article-prose h2,
+.article-prose h3,
+.article-prose h4,
+.article-prose h5,
+.article-prose h6 {
+  margin: 2em 0 0.75em;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-ink);
+}
+
+.article-prose h1 {
+  font-size: 1.75rem;
+}
+.article-prose h2 {
+  font-size: 1.45rem;
+  padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--color-border);
+}
+.article-prose h3 {
+  font-size: 1.2rem;
+}
+.article-prose h4 {
+  font-size: 1.05rem;
+}
+.article-prose h5,
+.article-prose h6 {
+  font-size: 1rem;
+  color: var(--color-muted);
+}
+
+.article-prose a {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--color-brand) 40%, transparent);
+  transition: text-decoration-color 0.2s;
+}
+
+.article-prose a:hover {
+  text-decoration-color: var(--color-brand);
+}
+
+.article-prose strong {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.article-prose em {
+  font-style: italic;
+}
+
+.article-prose del {
+  color: var(--color-subtle);
+}
+
+.article-prose ul,
+.article-prose ol {
+  margin: 1.15em 0;
+  padding-left: 1.5em;
+}
+
+.article-prose ul {
+  list-style: disc;
+}
+
+.article-prose ol {
+  list-style: decimal;
+}
+
+.article-prose li {
+  margin: 0.4em 0;
+}
+
+.article-prose li::marker {
+  color: var(--color-subtle);
+}
+
+/* GFM 任务列表 — 去掉列表符号，复选框内联 */
+.article-prose li:has(> input[type='checkbox']) {
+  list-style: none;
+  margin-left: -1.4em;
+}
+
+.article-prose input[type='checkbox'] {
+  margin-right: 0.5em;
+  accent-color: var(--color-brand);
+}
+
+.article-prose blockquote {
+  margin: 1.75em 0;
+  padding: 0.1em 0 0.1em 1.25em;
+  border-left: 3px solid color-mix(in srgb, var(--color-brand) 55%, transparent);
+  color: var(--color-muted);
+  font-style: normal;
+}
+
+.article-prose blockquote p {
+  margin: 0.6em 0;
+}
+
+.article-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface-2);
+  color: var(--color-brand-hover);
+}
+
+.article-prose pre {
+  margin: 1.75em 0;
+  padding: 1.15em 1.25em;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-2);
+  line-height: 1.7;
+  /* 右上角留出「复制」按钮的位置 */
+  padding-right: 4.5rem;
+}
+
+.article-prose pre code {
+  padding: 0;
+  background: none;
+  color: var(--color-ink);
+  font-size: 0.85rem;
+}
+
+.article-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.article-prose th,
+.article-prose td {
+  padding: 0.6em 0.85em;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.article-prose th {
+  background-color: var(--color-surface-2);
+  font-weight: 600;
+}
+
+/* 图片与视频的尺寸完全由 ArticleImages / ArticleVideo 组件控制。
+   这里刻意不写 img/video 的 width/height 兜底规则：`.article-prose img`
+   的选择器权重（0,1,1）高于 Tailwind 的 `.h-full`（0,1,0），一条
+   `height: auto` 会把图组里 object-cover 的格子高度整个覆盖掉，
+   图片缩回原始比例、格子露出底色。 */
+.article-prose figure {
+  margin-inline: 0;
+}
+
+/* 图文之间比段间距更宽，让媒体成为独立的一拍 */
+.article-prose figure + p,
+.article-prose p + figure {
+  margin-top: 1.6em;
+}
+
+/* 分隔线用居中的三点，比整条横线更克制 */
+.article-prose hr {
+  border: 0;
+  margin: 2.75em 0;
+  text-align: center;
+}
+
+.article-prose hr::before {
+  content: '· · ·';
+  letter-spacing: 0.6em;
+  color: var(--color-subtle);
+  font-size: 0.9rem;
+}
+
+/* ── 文章视频播放器（Plyr）──────────────────────────────────── */
+/* 尺寸放在 CSS 而不是 inline style：全屏时必须解除高度上限，
+   而 inline style 只能用 !important 覆盖，那条规则又会漏进其他状态。 */
+
+.article-video {
+  max-height: 70vh;
+}
+
+/* 竖屏视频收窄成居中一栏，而不是拉满整行留两条黑边 */
+.article-video--portrait {
+  width: fit-content;
+}
+
+.article-video video,
+.article-video .plyr,
+.article-video .plyr__video-wrapper {
+  max-height: 70vh;
+}
+
+/* ── 全屏：解除上面所有高度限制 ────────────────────────────── */
+/* 不解除的话视频只有 70vh 高、贴在屏幕上方，四周留黑边。
+   Plyr 3 用 .plyr--fullscreen-active（Fullscreen API）或
+   .plyr--fullscreen-fallback（不支持时的兜底），原生 :fullscreen 一并覆盖。 */
+
+.plyr--fullscreen-active,
+.plyr--fullscreen-fallback,
+.article-video:fullscreen,
+.article-video:-webkit-full-screen {
+  max-height: none;
+  width: 100%;
+  height: 100%;
+}
+
+.plyr--fullscreen-active video,
+.plyr--fullscreen-fallback video,
+.plyr--fullscreen-active .plyr__video-wrapper,
+.plyr--fullscreen-fallback .plyr__video-wrapper,
+.article-video:fullscreen video,
+.article-video:-webkit-full-screen video {
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 全屏时竖屏视频也要占满，不能再按内容宽度收窄 */
+.article-video--portrait:fullscreen,
+.article-video--portrait:-webkit-full-screen {
+  width: 100%;
+}
+
+/* ── 窄屏：音量改为点开才展开 ──────────────────────────────── */
+/* 音量滑块在窄屏上占着固定宽度，把进度条挤得几乎没有。
+   折叠成只剩静音图标，聚焦（点一下）或悬停时才滑出。 */
+
+@media (max-width: 640px) {
+  /* Plyr sizes this block with `width: 20%; min-width: 80px`, which on a
+     390px screen leaves the slider ~38px even when expanded. Collapse it to
+     the mute button, then let it take exactly what it needs once opened. */
+  .article-video .plyr__volume {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    flex: 0 0 auto;
+  }
+
+  .article-video .plyr__volume input[type='range'] {
+    width: 0;
+    min-width: 0;
+    flex: 0 0 0;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    transition: width 0.18s ease, flex-basis 0.18s ease, opacity 0.18s ease, margin 0.18s ease;
+  }
+
+  .article-video .plyr__volume:hover input[type='range'],
+  .article-video .plyr__volume:focus-within input[type='range'] {
+    width: 70px;
+    flex: 0 0 70px;
+    margin-left: 4px;
+    opacity: 1;
+  }
+
+  /* 进度条拿回被让出的空间 */
+  .article-video .plyr__controls .plyr__progress__container {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* 时长文本在窄屏里可有可无，当前时间足够定位 */
+  .article-video .plyr__controls .plyr__time--duration {
+    display: none;
+  }
+}

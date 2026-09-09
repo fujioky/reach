@@ -1,0 +1,111 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1782390358628,
+      "tag": "0000_lovely_spyke",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782461357249,
+      "tag": "0001_small_roland_deschain",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782473646469,
+      "tag": "0002_worried_aqueduct",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782549779829,
+      "tag": "0003_stormy_skullbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782550245541,
+      "tag": "0004_warm_viper",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782564543437,
+      "tag": "0005_groovy_shotgun",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782802110624,
+      "tag": "0006_add_app_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782893853946,
+      "tag": "0007_brief_krista_starr",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785908144433,
+      "tag": "0008_tense_anthem",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785917289323,
+      "tag": "0009_gray_skaar",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785922179827,
+      "tag": "0010_modern_starhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785924172770,
+      "tag": "0011_round_rictor",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786276321673,
+      "tag": "0012_unknown_snowbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786277688851,
+      "tag": "0013_quick_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786278244131,
+      "tag": "0014_tough_sugar_man",
+      "breakpoints": true
+    }
+  ]
+}
