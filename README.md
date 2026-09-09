@@ -1,90 +1,92 @@
 # Reach
 
-**Reach turns out-of-reach posts into links anyone can open.**
-Mirror an X or YouTube post — text, images, video, comments — into a private share link, publish your own articles, and watch how visitors actually read them.
+**所不及者，可达于人。**
+把一条 X / YouTube 的帖子——正文、图片、视频、评论——镜像成一条可控的私密链接；也可以发布自己撰写的文章，并看见访客究竟是怎样阅读它们的。
 
-English · [简体中文](./README.zh-CN.md)
+简体中文 · [English](./README.en.md)
 
-Demo: **https://reach.fujioky.com**
+演示站：**https://reach.fujioky.com**
+
+> **先部署抓取端。** Reach 不直接抓平台内容，依赖 [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) 里的代理（`proxy/`）：它在 Agent Reach 之上加了 Reach 需要的 X / YouTube 定制解析和公开访问接口。直接装上游 agent-reach 是不能用的，部署步骤见 [proxy/README.zh-CN.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)。
 
 ---
 
-## What it does
+## 功能
 
-**Mirrors** — paste a post URL, get a self-hosted copy.
+**镜像** —— 贴上帖子链接，得到一份自托管副本。
 
-- Fetches X (Twitter) posts and YouTube videos through an upstream *Agent Reach* API, then normalises them into one content model: title, body, author, media, engagement stats, comments.
-- Video is re-hosted: streamed through the app (`/api/proxy-video`), through an optional external reverse proxy, or uploaded to any S3-compatible bucket (Cloudflare R2, AWS S3, MinIO) and served from a CDN domain. Upstream streams are pulled in bounded chunks with automatic failover between hops.
-- Share links (`/s/<token>`) can expire by time, by view count, or burn after a single read. Each mirror keeps a version history with preview-before-apply refresh and rollback.
-- Subtitles: the best caption track is shown in-player; non-Chinese tracks are translated cue-by-cue via DeepL. Post text and comments get the same on-demand translation, cached in the database.
+- 通过上游 *Agent Reach* 接口抓取 X（Twitter）帖子与 YouTube 视频，统一归一化为同一套内容模型：标题、正文、作者、媒体、互动数据、评论。
+- 视频重新托管：可经本站转发（`/api/proxy-video`）、经外部反向代理转发，或上传到任意 S3 兼容存储桶（Cloudflare R2、AWS S3、MinIO）并从自定义域名分发。上游取流按有界分块进行，各通道之间自动故障转移。
+- 分享链接（`/s/<token>`）支持限期、限次、阅后即焚。每条镜像保留版本历史，刷新前可预览差异，随时回滚。
+- 字幕：播放器内直接显示最佳字幕轨，非中文字幕逐条经 DeepL 翻译；正文与评论同样按需翻译，结果缓存在数据库。
 
-**Articles** — write your own posts in Markdown.
+**文章** —— 用 Markdown 写自己的内容。
 
-- Split-pane editor with live preview, drag-and-drop or paste uploads, and a site-wide media library.
-- Images go to Vercel Blob; videos go to the S3 bucket via chunked multipart upload with per-part retry — both browser-direct, never through a serverless function.
-- Remote import: paste image/video links (or a page URL) and the server transfers the media into your own storage. An optional LLM resolver finds the media URL on pages the hand-written rules cannot parse.
-- Public permalinks (`/p/<slug>`), an archive page (`/post`), visitor comments with moderation, cover layouts, responsive WebP variants, and per-article password protection.
+- 左右分栏编辑器带实时预览，拖拽 / 粘贴即上传，全站共用素材库。
+- 图片存 Vercel Blob，视频经分块 multipart 直传 S3 存储桶、每块独立重试——都是浏览器直传，不经过 Serverless 函数。
+- 远程转存：粘贴图片 / 视频链接（或页面地址），服务端把媒体转存到自己的存储；手写规则解析不出媒体地址时，可选用 LLM 解析器兜底。
+- 公开固定链接（`/p/<slug>`）、归档页（`/post`）、访客评论与后台审核、两种封面版式、响应式 WebP 变体、逐篇密码保护。
 
-**Analytics** — self-built, no third-party script.
+**数据分析** —— 自建，不引入第三方脚本。
 
-- Every visitor page is recorded with [rrweb](https://github.com/rrweb-io/rrweb) (inputs masked) alongside structured events: views, dwell time per block, scroll depth, clicks, media plays, outbound links, video play/pause/seek/progress.
-- Admin dashboards: overview trends, per-content detail, session replay sized to the visitor's viewport, and click heatmaps rendered over a real page snapshot.
-- Ingest is unauthenticated but defended: body cap, origin check, schema validation, content existence check, and per-visitor rate limiting. Geo is resolved from IP and cached per address.
+- 每个访客页面用 [rrweb](https://github.com/rrweb-io/rrweb) 录制（输入内容打码），同时采集结构化事件：浏览、分块停留时长、滚动深度、点击、媒体播放、外链点击、视频播放 / 暂停 / 拖动 / 进度。
+- 后台看板：总览趋势、单条内容详情、按访客视口尺寸还原的会话回放、叠加在真实页面快照上的点击热力图。
+- 上报接口无需登录，但层层设防：请求体上限、来源校验、schema 校验、内容存在性校验、按访客限流。地理位置按 IP 解析并按地址缓存。
 
-**Operations**
+**运维**
 
-- Public status page (`/status`) with latency sparklines, fed by a daily cron sample and an admin health panel that probes the video proxy, S3 bucket, Agent Reach and DeepL.
-- Cloudflare Turnstile gate for visitor pages, optional site-wide content password, PWA manifest and service worker, light/dark theme.
+- 公开状态页（`/status`）带延迟迷你图，数据来自每日 cron 采样；后台健康面板探测视频代理、S3 存储桶、Agent Reach 与 DeepL。
+- 访客页 Cloudflare Turnstile 人机验证门、可选的全站内容密码、PWA manifest 与 Service Worker、亮 / 暗色主题。
 
-## Stack
+## 技术栈
 
-| Layer | Choice |
+| 层 | 选型 |
 | --- | --- |
-| Framework | Next.js 16 (App Router, Turbopack), React 19, TypeScript |
-| Styling | Tailwind CSS 4, custom design tokens (`/design-system`) |
-| Database | PostgreSQL via Drizzle ORM (Neon / Vercel Postgres in production) |
-| Auth | Auth.js v5 with credentials provider, bcrypt, JWT sessions |
-| Storage | Vercel Blob (images), any S3-compatible bucket (video) |
-| Media | Plyr player, sharp for image variants, rrweb / rrweb-player for replay |
-| Charts | Recharts |
-| Tests | Vitest |
+| 框架 | Next.js 16（App Router，Turbopack）、React 19、TypeScript |
+| 样式 | Tailwind CSS 4，自定义设计令牌（`/design-system`） |
+| 数据库 | PostgreSQL + Drizzle ORM（生产环境用 Neon / Vercel Postgres） |
+| 认证 | Auth.js v5 Credentials 提供者、bcrypt、JWT 会话 |
+| 存储 | Vercel Blob（图片）、任意 S3 兼容存储桶（视频） |
+| 媒体 | Plyr 播放器、sharp 生成图片变体、rrweb / rrweb-player 回放 |
+| 图表 | Recharts |
+| 测试 | Vitest |
 
-## Getting started
+## 本地运行
 
-Prerequisites: Node.js 24, a PostgreSQL database, a Vercel Blob store, and an Agent Reach endpoint (see below).
+前置条件：Node.js 24、一个 PostgreSQL 数据库、一个 Vercel Blob 存储、一个 Agent Reach 接口（见下文）。
 
 ```bash
 git clone https://github.com/fujioky/reach.git
 cd reach
 npm install
-cp .env.local.example .env.local   # fill in POSTGRES_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN, AGENT_REACH_*
+cp .env.local.example .env.local   # 填入 POSTGRES_URL、AUTH_SECRET、BLOB_READ_WRITE_TOKEN、AGENT_REACH_*
 npm run db:migrate
 npm run dev
 ```
 
-Open `http://localhost:3000/admin/login`. When the users table is empty the login page becomes a one-time setup form that creates the single admin account. Everything else — video proxy, S3 bucket, DeepL key, AI parser, content password — is configured at runtime under **Admin → 系统设置**.
+打开 `http://localhost:3000/admin/login`。用户表为空时，登录页会变成一次性的初始化表单，创建唯一的管理员账号。其余配置——视频代理、S3 存储桶、DeepL 密钥、AI 解析器、内容密码——都在运行时于 **后台 → 系统设置** 中完成。
 
-Run the test suite with `npm test`.
+运行测试：`npm test`。
 
-### Environment variables
+### 环境变量
 
-| Variable | Required | Purpose |
+| 变量 | 必需 | 用途 |
 | --- | --- | --- |
-| `POSTGRES_URL` | yes | Postgres connection string (also used by `drizzle-kit`) |
-| `AUTH_SECRET` | yes | Auth.js secret (`openssl rand -base64 32`) |
-| `BLOB_READ_WRITE_TOKEN` | yes | Vercel Blob token for images and avatars |
-| `AGENT_REACH_BASE_URL` | yes* | Upstream Agent Reach base URL |
-| `AGENT_REACH_PWD` | yes* | Upstream Agent Reach password |
-| `NEXT_PUBLIC_SITE_URL` | no | Canonical origin for share links, OpenGraph and the analytics origin check; defaults to the Vercel production URL |
-| `CRON_SECRET` | no | Protects `/api/cron/*`; Vercel sends it automatically for scheduled jobs |
-| `AI_PARSER_API_KEY` | no | Key for the optional LLM media resolver |
-| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | no | Enable the Cloudflare Turnstile gate on visitor pages; leave both empty to disable |
+| `POSTGRES_URL` | 是 | Postgres 连接串（`drizzle-kit` 也用它） |
+| `AUTH_SECRET` | 是 | Auth.js 密钥（`openssl rand -base64 32`） |
+| `BLOB_READ_WRITE_TOKEN` | 是 | Vercel Blob 令牌，存图片与头像 |
+| `AGENT_REACH_BASE_URL` | 是* | 上游 Agent Reach 接口地址 |
+| `AGENT_REACH_PWD` | 是* | 上游 Agent Reach 口令 |
+| `NEXT_PUBLIC_SITE_URL` | 否 | 站点规范源：分享链接、OpenGraph、分析上报来源校验；缺省取 Vercel 生产域名 |
+| `CRON_SECRET` | 否 | 保护 `/api/cron/*`；Vercel 定时任务会自动带上 |
+| `AI_PARSER_API_KEY` | 否 | 可选 LLM 媒体解析器的密钥 |
+| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | 否 | 开启访客页的 Cloudflare Turnstile 门；两者留空即关闭 |
 
-\* Can be set in the admin settings instead; environment values take precedence.
+\* 也可以在后台设置中填写；环境变量优先级更高。
 
 ### Agent Reach
 
-Reach does not scrape platforms itself. It calls an HTTP service that wraps the [Agent Reach](https://github.com/Panniantong/agent-reach) toolchain. A stock upstream install is **not** enough: upstream is a local capability layer for AI agents with no wrapping API. Deploy the proxy from **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)** (`proxy/`, see its [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md)) instead. It adds the custom X/Twitter and YouTube parsing Reach depends on — one normalised item, every progressive YouTube video source, subtitles as timed VTT, threaded comments, structured error kinds — and exposes the toolchain publicly through this endpoint and an MCP server with OAuth (usable from ChatGPT / Claude connectors):
+Reach 自身不抓取平台内容，而是调用一个封装了 [Agent Reach](https://github.com/Panniantong/agent-reach) 工具链的 HTTP 服务。直接部署上游是**不够**的：上游是给 AI Agent 用的本地能力层，没有任何包装 API。请部署 **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)** 里的代理（`proxy/`，见其 [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)）。它加入了 Reach 依赖的 X/Twitter 与 YouTube 定制解析——统一内容结构、全部渐进式 YouTube 视频源、带时间轴的 VTT 字幕、回复串、结构化错误类型——并把工具链通过下面这个接口和一个带 OAuth 的 MCP 服务（可接入 ChatGPT / Claude 连接器）公开出去：
 
 ```
 GET {base}/healthz                                   → { "ok": true, ... }
@@ -92,38 +94,38 @@ GET {base}/http/?platform=x|youtube&query=<url>&pwd=<pwd>
                                                      → { "ok": true, "item": { ... }, "errors": [] }
 ```
 
-`item` carries the post text, author, media (with all yt-dlp video sources for YouTube), engagement stats, comments, and optional `transcript` / `transcript_lang` / `transcript_vtt` fields. The adapters in `lib/fetcher/platforms/` normalise it; error kinds map to `lib/fetcher/errors.ts`. Rate limits (429) and network errors are retried with exponential backoff.
+`item` 包含帖子正文、作者、媒体（YouTube 附带全部 yt-dlp 视频源）、互动数据、评论，以及可选的 `transcript` / `transcript_lang` / `transcript_vtt` 字段。`lib/fetcher/platforms/` 中的适配器负责归一化，错误类型映射见 `lib/fetcher/errors.ts`。限流（429）与网络错误会按指数退避重试。
 
-## Deploying to Vercel
+## 部署到 Vercel
 
-1. Create a Vercel project from this repository (framework preset: Next.js, Node 24).
-2. Attach a Postgres database (Neon via the Vercel marketplace works out of the box) and a Blob store; Vercel injects `POSTGRES_URL` and `BLOB_READ_WRITE_TOKEN`.
-3. Add `AUTH_SECRET`, `AGENT_REACH_BASE_URL`, `AGENT_REACH_PWD`, and optionally `NEXT_PUBLIC_SITE_URL` and the Turnstile keys.
-4. Run the migrations once against the production database: `POSTGRES_URL=... npm run db:migrate`.
-5. Deploy. `vercel.json` already schedules the daily health sample cron.
-6. Visit `/admin/login` to create the admin account, then fill in the video proxy / storage settings.
+1. 从本仓库创建 Vercel 项目（框架预设 Next.js，Node 24）。
+2. 挂载一个 Postgres 数据库（Vercel 市场里的 Neon 开箱即用）和一个 Blob 存储；Vercel 会自动注入 `POSTGRES_URL` 与 `BLOB_READ_WRITE_TOKEN`。
+3. 添加 `AUTH_SECRET`、`AGENT_REACH_BASE_URL`、`AGENT_REACH_PWD`，按需添加 `NEXT_PUBLIC_SITE_URL` 与 Turnstile 密钥。
+4. 对生产数据库执行一次迁移：`POSTGRES_URL=... npm run db:migrate`。
+5. 部署。`vercel.json` 已配置每日健康采样的 cron。
+6. 访问 `/admin/login` 创建管理员账号，然后填写视频代理 / 存储设置。
 
-The `vercel` CLI uploads the working directory rather than a git commit; `.vercelignore` keeps local caches and media out of the upload.
+`vercel` CLI 上传的是工作目录而非 git 提交；`.vercelignore` 负责把本地缓存和媒体文件排除在外。
 
-## Project layout
+## 目录结构
 
 ```
 app/
-  admin/(shell)/      admin UI: mirrors, shares, articles, media, analytics, settings
-  admin/login/        login + first-run setup
-  api/                route handlers: fetch, proxy-video, article-media, analytics ingest, health, cron…
-  s/[token]/          mirror visitor page
-  p/[slug]/, post/    article page and archive
-  status/             public status page
+  admin/(shell)/      后台：镜像、分享、文章、素材、分析、设置
+  admin/login/        登录与首次初始化
+  api/                路由处理器：抓取、视频代理、文章媒体、分析上报、健康检查、cron……
+  s/[token]/          镜像访客页
+  p/[slug]/, post/    文章页与归档页
+  status/             公开状态页
 lib/
-  fetcher/            Agent Reach client + platform adapters (X, YouTube)
-  video/              chunked upstream fetch, proxy failover, playback URL resolution
-  storage/, blob/     S3 multipart + presign, Vercel Blob helpers
-  article/            markdown, media library, remote import (SSRF-guarded), tokens
-  analytics/          queries, geo lookup, replay media re-signing
-  access/, content/   share access control, password gate
-  health/, settings/  health probes, typed app_settings accessor
-drizzle/migrations/   SQL migrations (drizzle-kit)
+  fetcher/            Agent Reach 客户端与平台适配器（X、YouTube）
+  video/              分块上游取流、代理故障转移、播放地址解析
+  storage/, blob/     S3 multipart 与预签名、Vercel Blob 辅助
+  article/            Markdown、素材库、远程转存（含 SSRF 防护）、签名令牌
+  analytics/          聚合查询、地理位置、回放媒体重签
+  access/, content/   分享访问控制、密码门
+  health/, settings/  健康探测、app_settings 类型化访问层
+drizzle/migrations/   SQL 迁移（drizzle-kit）
 ```
 
-`AGENTS.md` collects the non-obvious behaviours and pitfalls that matter when changing the code; `docs/article-publishing.md` documents the article pipeline in depth.
+`AGENTS.md` 汇总了改代码时需要知道的非显性行为与陷阱；`docs/article-publishing.md` 详细记录了文章发布链路。
