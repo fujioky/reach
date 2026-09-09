@@ -29,7 +29,7 @@ Demo: **https://reach.fujioky.com**
 
 **Analytics** — self-built, no third-party script.
 
-- Every visitor page is recorded with [rrweb](https://github.com/rrweb-io/rrweb) (inputs masked) alongside structured events: views, dwell time per block, scroll depth, clicks, media plays, outbound links, video play/pause/seek/progress.
+- Every visitor page is recorded with [rrweb](https://github.com/rrweb-io/rrweb) alongside structured events: views, dwell time per block, scroll depth, clicks, media plays, outbound links, video play/pause/seek/progress.
 - Admin dashboards: overview trends, per-content detail, session replay sized to the visitor's viewport, and click heatmaps rendered over a real page snapshot.
 - Ingest is unauthenticated but defended: body cap, origin check, schema validation, content existence check, and per-visitor rate limiting. Geo is resolved from IP and cached per address.
 
@@ -37,6 +37,32 @@ Demo: **https://reach.fujioky.com**
 
 - Public status page (`/status`) with latency sparklines, fed by a daily cron sample and an admin health panel that probes the video proxy, S3 bucket, Agent Reach and DeepL.
 - Cloudflare Turnstile gate for visitor pages, optional site-wide content password, PWA manifest and service worker, light/dark theme.
+
+## Visit recording and session replay
+
+When a visitor opens a mirror (`/s/<token>`) or an article (`/p/<slug>`), the page mounts a recorder (`app/_components/analytics/Recorder.tsx`); one page open is one session. It captures three kinds of data:
+
+| Kind | What | Table |
+| --- | --- | --- |
+| DOM recording | [rrweb](https://github.com/rrweb-io/rrweb) full snapshot + incremental mutations; mouse moves sampled at 60 ms, scroll at 150 ms, media at 800 ms | `analytics_chunks` (jsonb batches ordered by `seq`) |
+| Structured events | `view`, `dwell` (visible time per content block), `scroll` (max depth), `click` (page coords + document/viewport size), `media_click`, `media_play`, `outlink_click`, `video` (play / pause / seek / every 10 % of progress / fullscreen / ended / rate change) | `visit_events` |
+| Session metadata | IP, User-Agent, screen and viewport size, DPR, language, referrer, country / region / city resolved from the IP and cached per address, rolling duration and event counters | `analytics_sessions` |
+
+The recorder batches everything to `/api/analytics/ingest` every 5 seconds, earlier once the rrweb buffer passes 400 events; the final flush on page close uses `sendBeacon`. Failed batches stay in an outbox and are retried, session metadata is resent with every batch until acknowledged, and the ingest upsert is idempotent. Video events are captured at document level in the capture phase, so any `<video>` (Plyr included) is covered without instrumenting players.
+
+What the admin sees:
+
+- **`/admin/analytics/sessions`** — session list (time, content, region, device, duration, event count).
+- **`/admin/analytics/session/<id>`** — replay with rrweb-player sized to the visitor's viewport, next to a behaviour timeline; videos inside the replay stay in sync with the recording.
+- **`/admin/analytics/content/<id>/heatmap`** — click heatmap: a page snapshot is rendered from one real session's recording and every session's clicks for that content are drawn over it, bucketed by desktop / mobile viewport.
+- **`/admin/analytics/content/<id>`** — per-content stats: trends, block dwell, scroll-depth funnel, video progress funnel and pause positions, click targets, media and outbound-link charts.
+
+Things to know:
+
+- Article media URLs carry a 6-hour signed token and the recording stores the URL the visitor saw; the replay API re-signs those tokens before serving (`lib/analytics/resign-media.ts`), so old sessions still show their images and videos without touching stored data.
+- Ingest is unauthenticated but defended: body cap, origin check, schema validation, content existence check, per-visitor rate limit. Visitors are told apart by an HttpOnly `visitor_id` cookie.
+- Inputs are **not** masked (`maskAllInputs: false`): text a visitor types into the comment form ends up in the recording.
+- There is no switch to turn recording off and no automatic cleanup; recordings cascade-delete with their content item, so keep an eye on the size of `analytics_chunks`. Keep the `app/privacy-policy` page in line with what you actually collect.
 
 ## Stack
 

@@ -29,7 +29,7 @@
 
 **数据分析** —— 自建，不引入第三方脚本。
 
-- 每个访客页面用 [rrweb](https://github.com/rrweb-io/rrweb) 录制（输入内容打码），同时采集结构化事件：浏览、分块停留时长、滚动深度、点击、媒体播放、外链点击、视频播放 / 暂停 / 拖动 / 进度。
+- 每个访客页面用 [rrweb](https://github.com/rrweb-io/rrweb) 录制 DOM 变化，同时采集结构化事件：浏览、分块停留时长、滚动深度、点击、媒体播放、外链点击、视频播放 / 暂停 / 拖动 / 进度。
 - 后台看板：总览趋势、单条内容详情、按访客视口尺寸还原的会话回放、叠加在真实页面快照上的点击热力图。
 - 上报接口无需登录，但层层设防：请求体上限、来源校验、schema 校验、内容存在性校验、按访客限流。地理位置按 IP 解析并按地址缓存。
 
@@ -37,6 +37,32 @@
 
 - 公开状态页（`/status`）带延迟迷你图，数据来自每日 cron 采样；后台健康面板探测视频代理、S3 存储桶、Agent Reach 与 DeepL。
 - 访客页 Cloudflare Turnstile 人机验证门、可选的全站内容密码、PWA manifest 与 Service Worker、亮 / 暗色主题。
+
+## 访问记录与会话回放
+
+访客打开镜像页（`/s/<token>`）或文章页（`/p/<slug>`）时，页面会挂载一个录制器（`app/_components/analytics/Recorder.tsx`），一次打开就是一条会话。它记录三类东西：
+
+| 类别 | 内容 | 落库 |
+| --- | --- | --- |
+| DOM 录像 | [rrweb](https://github.com/rrweb-io/rrweb) 的完整快照 + 增量变更；鼠标移动 60ms、滚动 150ms、媒体 800ms 采样 | `analytics_chunks`（按 `seq` 排序的 jsonb 批次） |
+| 结构化事件 | `view`、`dwell`（各内容块可见时长）、`scroll`（最大深度）、`click`（页面坐标 + 文档/视口尺寸）、`media_click`、`media_play`、`outlink_click`、`video`（播放 / 暂停 / 拖动 / 每 10% 进度 / 全屏 / 结束 / 倍速） | `visit_events` |
+| 会话元数据 | IP、User-Agent、屏幕与视口尺寸、DPR、语言、来源页、按 IP 解析并缓存的国家 / 地区 / 城市、累计时长与事件计数 | `analytics_sessions` |
+
+录制器每 5 秒把缓冲批量发到 `/api/analytics/ingest`，缓冲超过 400 条 rrweb 事件时提前发送；页面关闭时用 `sendBeacon` 做最后一次提交，失败的批次留在发件箱下次重试，会话元数据在被确认前随每批重发，上报接口的写入是幂等的。视频事件在 document 捕获阶段统一采集，任何 `<video>`（含 Plyr）都能覆盖，不用给播放器埋点。
+
+后台能看到的：
+
+- **`/admin/analytics/sessions`** —— 会话列表（时间、内容、地区、设备、时长、事件数）。
+- **`/admin/analytics/session/<id>`** —— 会话回放：rrweb-player 按访客当时的视口尺寸还原，旁边是行为时间轴；回放里的视频与录像进度同步。
+- **`/admin/analytics/content/<id>/heatmap`** —— 点击热力图：取一条真实会话的录像渲染出页面快照，把该内容全部会话的点击叠上去，按桌面 / 移动视口分桶。
+- **`/admin/analytics/content/<id>`** —— 单条内容的统计：趋势、分块停留、滚动深度漏斗、视频进度漏斗与暂停位置、点击目标、媒体与外链图表。
+
+几点要知道的：
+
+- 文章媒体地址带 6 小时签名令牌，录像里记下的是访客当时的 URL；回放接口下发前会重签令牌（`lib/analytics/resign-media.ts`），所以旧会话的图片与视频照常显示，存储的数据不动。
+- 上报接口无需登录，但有请求体上限、来源校验、schema 校验、内容存在性校验、按访客限流。访客靠 HttpOnly 的 `visitor_id` cookie 区分。
+- 录像**不打码**输入框（`maskAllInputs: false`），访客在评论框里输入的内容会进入录像。
+- 没有关闭录制的开关，也没有自动清理：录像随内容项级联删除，长期运行要留意 `analytics_chunks` 的体积。`app/privacy-policy` 页面的文案要与你实际的采集范围保持一致。
 
 ## 技术栈
 

@@ -146,7 +146,7 @@ are both tracked, keyed on `content_item_id`.
 ### Pipeline
 
 - **`Recorder.tsx`** (`app/_components/analytics/`) — mounted on both visitor
-  page types. Runs rrweb `record()` (masked inputs) and captures structured
+  page types. Runs rrweb `record()` (inputs are not masked) and captures structured
   events; batches everything to the ingest route every 5s, final flush via
   sendBeacon. Video events are captured document-level in the capture phase, so
   any `<video>` (plyr included) is covered without instrumenting players.
