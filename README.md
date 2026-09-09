@@ -1,5 +1,7 @@
 # Reach
 
+![Reach 首页](docs/screenshots/home.png)
+
 **所不及者，可达于人。**
 把一条 X / YouTube 的帖子——正文、图片、视频、评论——镜像成一条可控的私密链接；也可以发布自己撰写的文章，并看见访客究竟是怎样阅读它们的。
 
@@ -10,6 +12,16 @@
 > **先部署抓取端。** Reach 不直接抓平台内容，依赖 [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) 里的代理（`proxy/`）：它在 Agent Reach 之上加了 Reach 需要的 X / YouTube 定制解析和公开访问接口。直接装上游 agent-reach 是不能用的，部署步骤见 [proxy/README.zh-CN.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)。 视频转发 / 转存通道可部署 [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)。
 
 ---
+
+## 预览
+
+| | |
+| --- | --- |
+| ![文章页](docs/screenshots/article.png) 文章页：目录、阅读进度、封面与正文 | ![归档](docs/screenshots/article-archive.png) 文章归档 `/post` |
+| ![创建镜像](docs/screenshots/admin-create-mirror.png) 创建镜像：粘贴链接 → 抓取预览 → 勾选保留的评论 | ![镜像管理](docs/screenshots/admin-mirrors.png) 镜像管理：每条内容下的分享链接与访问统计 |
+| ![分享链接](docs/screenshots/admin-share-link.png) 新增分享链接：有效期、总次数、独立访客数、阅后即焚 | ![会话回放](docs/screenshots/admin-session-replay.png) 会话回放：按访客视口还原，附点击热力图 |
+| ![文章管理](docs/screenshots/admin-articles.png) 文章管理 | ![素材管理](docs/screenshots/admin-media-library.png) 素材管理：引用状态、公开分享、清理未引用 |
+| ![人机验证](docs/screenshots/turnstile-gate.png) 访客页的 Cloudflare Turnstile 门 | |
 
 ## 功能
 

@@ -48,3 +48,6 @@ tsconfig.tsbuildinfo
 
 # reach-dlproxy source dropped in for reference, lives in its own repo
 dl-proxy/
+
+# raw 4K screenshots; resized copies live in docs/screenshots
+/screenshots/

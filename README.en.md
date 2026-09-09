@@ -1,5 +1,7 @@
 # Reach
 
+![Reach home page](docs/screenshots/home.png)
+
 **Reach turns out-of-reach posts into links anyone can open.**
 Mirror an X or YouTube post — text, images, video, comments — into a private share link, publish your own articles, and watch how visitors actually read them.
 
@@ -10,6 +12,16 @@ Demo: **https://reach.fujioky.com**
 > **Deploy the fetcher first.** Reach does not scrape platforms itself; it depends on the proxy in [fujioky/reach-upstream](https://github.com/fujioky/reach-upstream) (`proxy/`), which adds the X / YouTube parsing and the public API Reach needs on top of Agent Reach. A stock upstream install will not work. Setup steps: [proxy/README.md](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md). For the video proxy / re-hosting channel, deploy [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy).
 
 ---
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Article page](docs/screenshots/article.png) Article page: table of contents, reading progress, cover and body | ![Archive](docs/screenshots/article-archive.png) Article archive at `/post` |
+| ![Create mirror](docs/screenshots/admin-create-mirror.png) Create a mirror: paste a link → fetch preview → pick the comments to keep | ![Mirrors](docs/screenshots/admin-mirrors.png) Mirror management: share links and visit stats per item |
+| ![Share link](docs/screenshots/admin-share-link.png) New share link: expiry, total opens, unique visitors, burn after read | ![Session replay](docs/screenshots/admin-session-replay.png) Session replay sized to the visitor's viewport, with click heatmap |
+| ![Articles](docs/screenshots/admin-articles.png) Article management | ![Media library](docs/screenshots/admin-media-library.png) Media library: reference status, public sharing, cleanup of unreferenced files |
+| ![Turnstile](docs/screenshots/turnstile-gate.png) Cloudflare Turnstile gate on visitor pages | |
 
 ## What it does
 
