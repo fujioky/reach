@@ -136,7 +136,7 @@ vi.mock('next/cache', () => ({
 }));
 
 // Import after mocks are registered.
-const { createMirror, deleteMirror } = await import('@/app/admin/(shell)/mirrors/actions');
+const { createMirror, deleteMirror, previewMirror } = await import('@/app/admin/(shell)/mirrors/actions');
 
 describe('createMirror share-link coordination (D-29/D-38, SHRE-01)', () => {
   beforeEach(() => {
@@ -188,5 +188,24 @@ describe('deleteMirror deletes shares before media (landmine #1, FK NO ACTION)',
     expect(sharesIdx).toBeGreaterThanOrEqual(0);
     expect(mediaIdx).toBeGreaterThan(sharesIdx);
     expect(contentItemsIdx).toBeGreaterThan(sharesIdx);
+  });
+});
+
+
+describe('后台 YouTube 链接兼容性', () => {
+  it.each(['youtube.com', 'www.youtube.com', 'm.youtube.com'])('允许 %s 预览并创建镜像', async (host) => {
+    const url = `https://${host}/watch?v=xxxxxxxxxxx`;
+    expect((await previewMirror(url)).ok).toBe(true);
+    expect((await createMirror({ url, selectedCommentIds: [] })).ok).toBe(true);
+  });
+
+  it.each([
+    'https://youtube.com.evil.test/watch?v=xxxxxxxxxxx',
+    'https://www.youtube.com@evil.test/watch?v=xxxxxxxxxxx',
+    'https://notyoutube.com/watch?v=xxxxxxxxxxx',
+    'ftp://youtube.com/watch?v=xxxxxxxxxxx',
+  ])('仍然拒绝非受信任域名或协议：%s', async (url) => {
+    expect((await previewMirror(url)).ok).toBe(false);
+    expect((await createMirror({ url, selectedCommentIds: [] })).ok).toBe(false);
   });
 });

@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { parsePostUrl } from '@/lib/fetcher/platforms';
+import { identifyPlatform, parsePostUrl } from '@/lib/fetcher/platforms';
 
 describe('parsePostUrl — X / Twitter', () => {
   it.each([
@@ -68,5 +68,21 @@ describe('parsePostUrl — anything else', () => {
 
   it('tolerates surrounding whitespace from a paste', () => {
     expect(parsePostUrl('  https://x.com/jack/status/20\n')?.sourceId).toBe('20');
+  });
+});
+
+
+describe('YouTube 域名识别', () => {
+  it.each(['youtube.com', 'www.youtube.com', 'm.youtube.com'])('识别 %s 的视频链接', (host) => {
+    expect(identifyPlatform(`https://${host}/watch?v=xxxxxxxxxxx`).platform).toBe('youtube');
+  });
+
+  it.each([
+    'https://youtube.com.evil.test/watch?v=xxxxxxxxxxx',
+    'https://www.youtube.com@evil.test/watch?v=xxxxxxxxxxx',
+    'https://notyoutube.com/watch?v=xxxxxxxxxxx',
+    'ftp://youtube.com/watch?v=xxxxxxxxxxx',
+  ])('拒绝非受信任域名或协议：%s', (url) => {
+    expect(() => identifyPlatform(url)).toThrow();
   });
 });

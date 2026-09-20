@@ -17,7 +17,7 @@ export const youtubeAdapter: PlatformAdapter = {
   platform: 'youtube',
   name: 'YouTube',
   urlPatterns: [
-    /^https?:\/\/(www\.youtube\.com|youtu\.be)\/.+/i,
+    /^https?:\/\/((?:(?:www|m)\.)?youtube\.com|youtu\.be)\/.+/i,
   ],
   matches(url) {
     return this.urlPatterns.some((p) => p.test(url));

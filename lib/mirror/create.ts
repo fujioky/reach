@@ -37,7 +37,7 @@ export const platformUrlSchema = z
   .url()
   .refine(
     (url) =>
-      /^https?:\/\/(twitter\.com|x\.com|t\.co|www\.youtube\.com|youtu\.be)\//i.test(
+      /^https?:\/\/(twitter\.com|x\.com|t\.co|(?:(?:www|m)\.)?youtube\.com|youtu\.be)\//i.test(
         url,
       ),
     'URL must be from twitter.com, x.com, t.co, youtube.com, or youtu.be',
