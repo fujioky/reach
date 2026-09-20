@@ -154,7 +154,7 @@ export async function downloadAndUploadVideo(
   // timeoutMs bounds the whole transfer: upload consumes the fetch body, so the
   // fetch abort signal stays armed until the last chunk is read.
   const {
-    maxBytes = 300 * 1024 * 1024,
+    maxBytes = 500 * 1024 * 1024,
     timeoutMs = 240000,
     onStage,
     onProgress,
