@@ -66,6 +66,7 @@ export interface Comment {
     replies: number;          // platform-reported reply count
   };
   images?: string[];          // attached image URLs (videos excluded)
+  videos?: string[];          // attached video URLs (X: video.twimg.com mp4)
   replies?: Comment[];
 }
 

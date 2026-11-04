@@ -18,14 +18,14 @@ import { turnstileGateRequired } from '@/lib/turnstile';
 import { getSetting } from '@/lib/settings';
 import { auth } from '@/auth';
 import { openPost } from '@/lib/mirror/x-post-cache';
-import { toThreadNodes } from '@/lib/mirror/thread-view';
+import { threadVideoSrc, toThreadNodes } from '@/lib/mirror/thread-view';
 import { PageBackground } from '@/app/_components/layout/PageBackground';
 import { SurfaceCard } from '@/app/_components/ui/SurfaceCard';
 import { CommentsSection, ShareHeader } from '../../_components/ShareChrome';
 import { PageTranslationShell } from '../../_components/TranslationContext';
 import { TranslatedBody } from '../../_components/TranslatedBody';
 import { ThreadParents } from '../../_components/ThreadParents';
-import { CommentListClient } from '../../_components/CommentListClient';
+import { CommentListClient, ThreadVideos } from '../../_components/CommentListClient';
 import { proxyAvatar } from '../../_components/proxy-avatar';
 import { XImageGrid } from '../../_components/XImageGrid';
 import { ExpiredPage } from '../../_components/ExpiredPage';
@@ -69,9 +69,10 @@ export default async function OpenedPostPage({
   }
 
   const { payload } = opened;
-  const [post] = await toThreadNodes([{ ...payload.post, inReplyTo: null }]);
-  const parents = await toThreadNodes(payload.parents.map((p) => ({ ...p, inReplyTo: null })));
-  const replies = await toThreadNodes(payload.replies);
+  const videoSrc = threadVideoSrc(token);
+  const [post] = await toThreadNodes([{ ...payload.post, inReplyTo: null }], undefined, videoSrc);
+  const parents = await toThreadNodes(payload.parents.map((p) => ({ ...p, inReplyTo: null })), undefined, videoSrc);
+  const replies = await toThreadNodes(payload.replies, undefined, videoSrc);
   const translationAvailable = Boolean(await getSetting('deepl_api_key'));
 
   return (
@@ -103,6 +104,7 @@ export default async function OpenedPostPage({
           {post!.images.length > 0 && (
             <XImageGrid images={post!.images.map((src, i) => ({ src, alt: `图片 ${i + 1}` }))} />
           )}
+          <ThreadVideos srcs={post!.videos} className="mt-3" />
           <div className="mt-4 flex items-center justify-between text-[13px] text-muted">
             <span>{payload.post.postedAt ? new Date(payload.post.postedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : ''}</span>
             <a href={payload.post.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-ink">

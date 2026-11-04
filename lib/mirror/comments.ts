@@ -25,6 +25,7 @@ export interface CommentRecord {
   likes: number;              // from stats.likes
   retained: boolean;          // D-27: true if admin kept this comment
   images: string[];           // attached image URLs, downloaded at write time
+  videos: string[];           // attached video URLs (stored as-is, played through a proxy)
   inReplyTo: string | null;   // platform id of the parent comment; null at top level
   replyCount: number;         // platform-reported reply count (stats.replies)
 }
@@ -74,6 +75,7 @@ export function buildCommentRecords(
       likes: comment.stats.likes,
       retained,
       images: comment.images ?? [],
+      videos: comment.videos ?? [],
       inReplyTo,
       replyCount: comment.stats.replies ?? 0,
     });

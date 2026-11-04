@@ -65,6 +65,7 @@ export function normalizeComments(
       replies: c.stats.comments,
     },
     images: commentImageUrls(c.images),
+    videos: commentVideoUrls(c.images),
     replies: c.replies ? normalizeComments(c.replies) : undefined,
   }));
 }
@@ -81,6 +82,14 @@ function commentImageUrls(images: AgentReachComment['images']): string[] {
       /^https?:\/\//.test(url) &&
       !url.includes('video.twimg.com') &&
       !/\.mp4(\?|$)/i.test(url),
+  );
+}
+
+/** Video URLs attached to a comment (X lists them among its media URLs). */
+function commentVideoUrls(images: AgentReachComment['images']): string[] {
+  return (images ?? []).filter(
+    (url): url is string =>
+      typeof url === 'string' && /^https:\/\/video\.twimg\.com\//.test(url),
   );
 }
 

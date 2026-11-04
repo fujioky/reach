@@ -3,14 +3,15 @@
 //
 // From the visitor page a reader can open a tweet in the conversation (a
 // parent above the mirrored post, or a reply loaded on such a page) and see it
-// with its own context and replies. The first open fetches it through
-// reach-upstream, copies its images to Blob and stores the result in
-// x_post_cache; later readers get the stored copy. Only tweets already
+// with its own context and replies. A tweet that already has a mirror is
+// built from that mirror (no fetch, images already in Blob); otherwise the
+// first open fetches it through reach-upstream and copies its images to Blob.
+// Either way the result is stored in x_post_cache for later readers. Only tweets already
 // reachable from this mirror can be opened, so a share link cannot be used to
 // fetch arbitrary tweets.
 
-import { and, eq } from 'drizzle-orm';
-import { db, comments, contentItems, xPostCache } from '@/lib/db';
+import { and, eq, sql } from 'drizzle-orm';
+import { db, comments, contentItems, media, xPostCache } from '@/lib/db';
 import { fetchContent } from '@/lib/fetcher';
 import type { Comment, FetchedContent } from '@/lib/fetcher/types';
 import { buildCommentRecords, type CommentRecord } from '@/lib/mirror/comments';
@@ -79,6 +80,7 @@ function toStored(record: CommentRecord, images: StoredPost['images']): StoredPo
     likes: record.likes,
     replyCount: record.replyCount,
     images,
+    videos: record.videos,
   };
 }
 
@@ -91,6 +93,50 @@ function selfComment(content: FetchedContent): Comment {
     createdAt: content.publishedAt,
     stats: { likes: content.stats.likes, replies: content.stats.comments },
     images: content.media.filter((m) => m.type === 'image').map((m) => m.originalUrl),
+    videos: content.media.filter((m) => m.type === 'video').map((m) => m.originalUrl),
+  };
+}
+
+/** The tweet as stored by its own mirror, if it has one: no fetch, no upload. */
+async function fromMirror(tweetId: string): Promise<XPostCachePayload | null> {
+  const [mirror] = await db
+    .select()
+    .from(contentItems)
+    .where(and(eq(contentItems.platform, 'x'), eq(sql`${contentItems.platformData}->>'sourceId'`, tweetId)))
+    .limit(1);
+  if (!mirror) return null;
+  const [mediaRows, commentRows] = await Promise.all([
+    db.select().from(media).where(eq(media.contentItemId, mirror.id)),
+    db.select().from(comments).where(eq(comments.contentItemId, mirror.id)),
+  ]);
+  const stats = mirror.stats as { likes?: number; comments?: number } | null;
+  const thread = readThread(mirror.platformData);
+  return {
+    post: {
+      platformId: tweetId,
+      sourceUrl: mirror.sourceUrl ?? statusUrl(tweetId),
+      author: mirror.author as StoredPost['author'],
+      text: mirror.body,
+      postedAt: mirror.publishedAt?.toISOString() ?? null,
+      likes: stats?.likes ?? 0,
+      replyCount: stats?.comments ?? 0,
+      images: mediaRows.filter((m) => m.type === 'image').map((m) => ({ originalUrl: m.originalUrl, blobUrl: m.blobUrl })),
+      videos: mediaRows.filter((m) => m.type === 'video').map((m) => m.originalUrl),
+    },
+    parents: thread?.parents ?? [],
+    parentMissing: thread?.parentMissing ?? null,
+    replies: commentRows
+      .filter((c) => c.retained && c.platformCommentId)
+      .map((c) => ({
+        platformId: c.platformCommentId!,
+        author: c.author as StoredPost['author'],
+        text: c.text,
+        postedAt: c.postedAt?.toISOString() ?? null,
+        likes: c.likes ?? 0,
+        replyCount: c.replyCount,
+        images: c.images,
+        inReplyTo: c.inReplyTo ?? tweetId,
+      })),
   };
 }
 
@@ -100,6 +146,12 @@ export async function openPost(item: ContentItemRow, tweetId: string): Promise<O
   const cached = await readCached(item, tweetId);
   if (cached) return { ok: true, payload: cached };
   if (!(await reachableIds(item)).has(tweetId)) return { ok: false, status: 404, error: 'not_in_mirror' };
+
+  const mirrored = await fromMirror(tweetId);
+  if (mirrored) {
+    await db.insert(xPostCache).values({ contentItemId: item.id, tweetId, payload: mirrored }).onConflictDoNothing();
+    return { ok: true, payload: mirrored };
+  }
 
   let content: FetchedContent;
   try {

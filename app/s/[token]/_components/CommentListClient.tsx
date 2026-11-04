@@ -233,8 +233,28 @@ export function CommentBody({
             <XImageGrid images={node.images.map((src, i) => ({ src, alt: `评论图片 ${i + 1}` }))} />
           </div>
         )}
+        <ThreadVideos srcs={node.videos} className="mt-2 max-w-[420px]" />
         {children}
       </div>
+    </div>
+  );
+}
+
+/** Videos of a thread post, played through the share's video route. */
+export function ThreadVideos({ srcs, className = '' }: { srcs: string[]; className?: string }) {
+  if (srcs.length === 0) return null;
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      {srcs.map((src) => (
+        <video
+          key={src}
+          src={src}
+          controls
+          playsInline
+          preload="metadata"
+          className="max-h-[480px] w-full rounded-xl bg-black ring-1 ring-border/50"
+        />
+      ))}
     </div>
   );
 }

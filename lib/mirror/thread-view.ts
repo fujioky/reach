@@ -21,6 +21,8 @@ export interface ThreadNode {
   text: string;
   /** Presigned image URLs. */
   images: string[];
+  /** Playable video URLs (through /api/x-thread/video). */
+  videos: string[];
   /** Platform-reported reply count; more than the loaded children means more can be fetched. */
   replyCount: number;
   /** Server-prefetched translations from the DB cache. */
@@ -33,13 +35,25 @@ export interface StoredNodeInput {
   author: unknown;
   text: string;
   images: CommentImage[];
+  /** X video URLs as stored; turned into playable URLs by `videoSrc`. */
+  videos?: string[];
   replyCount: number;
+}
+
+/** Builds the playable URL for video `index` of tweet `postId`. */
+export type VideoSrc = (postId: string, index: number) => string;
+
+/** Videos of thread posts play through /api/x-thread/video under the share. */
+export function threadVideoSrc(token: string): VideoSrc {
+  return (postId, index) =>
+    `/api/x-thread/video?token=${encodeURIComponent(token)}&post=${encodeURIComponent(postId)}&i=${index}`;
 }
 
 /** Presign every stored image once and build the nodes, in input order. */
 export async function toThreadNodes(
   rows: StoredNodeInput[],
   translations: Map<string, string> = new Map(),
+  videoSrc?: VideoSrc,
 ): Promise<ThreadNode[]> {
   const blobUrls = [...new Set(rows.flatMap((r) => r.images.flatMap((img) => img.blobUrl ?? [])))];
   const presigned = new Map<string, string>();
@@ -64,6 +78,7 @@ export async function toThreadNodes(
           const src = img.blobUrl ? presigned.get(img.blobUrl) : undefined;
           return src ? [src] : [];
         }),
+        videos: videoSrc ? (r.videos ?? []).map((_, i) => videoSrc(r.platformId, i)) : [],
         replyCount: r.replyCount,
         initialTranslations: cached ? { [r.text]: cached } : {},
       },

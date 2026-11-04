@@ -29,8 +29,8 @@ import { SurfaceCard } from '@/app/_components/ui/SurfaceCard';
 import { MediaGallery } from './_components/MediaGallery';
 import { CommentList } from './_components/CommentList';
 import { ThreadParents } from './_components/ThreadParents';
-import { readThread } from '@/lib/mirror/x-thread';
-import { toThreadNodes } from '@/lib/mirror/thread-view';
+import { readThread, withMirroredMedia } from '@/lib/mirror/x-thread';
+import { threadVideoSrc, toThreadNodes } from '@/lib/mirror/thread-view';
 import { TableOfContents } from '@/app/_components/article/TableOfContents';
 import { after } from 'next/server';
 import { prefetchMissingReplies } from '@/lib/mirror/x-thread-expand';
@@ -312,7 +312,11 @@ export default async function VisitorPage({
   // Reply context: the tweets this post answers, root first.
   const thread = readThread(item.platformData);
   const threadParents = thread
-    ? await toThreadNodes(thread.parents.map((p) => ({ ...p, inReplyTo: null })))
+    ? await toThreadNodes(
+        (await withMirroredMedia(thread.parents)).map((p) => ({ ...p, inReplyTo: null })),
+        undefined,
+        threadVideoSrc(token),
+      )
     : [];
 
   return (
