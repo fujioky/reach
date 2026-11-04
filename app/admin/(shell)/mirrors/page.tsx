@@ -1,10 +1,11 @@
 // app/admin/(shell)/mirrors/page.tsx
 // 内容管理列表 — 每行可展开，行内显示该内容的分享列表与操作。
 //
-// RSC: 一次性查询所有内容 + 所有分享（避免 N+1），按 contentItemId 分组后
-// 传给 ContentRow（Client Component）管理展开状态。
+// RSC: 查询当前页的内容 + 这些内容的分享（避免 N+1），按 contentItemId 分组后
+// 传给 ContentRow（Client Component）管理展开状态。分页走查询参数
+// ?page=&size=，size 可选 50 / 100 / 200 / all。
 
-import { desc } from 'drizzle-orm';
+import { count, desc, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { AdminPageHeader } from '@/app/_components/admin/AdminPageHeader';
@@ -13,6 +14,7 @@ import { isNotArticle } from '@/lib/article/queries';
 import { ContentRow, type ShareRow } from './_components/ContentRow';
 import { xKindLabel } from '@/lib/mirror/kind-label';
 import { RefreshAllXButton } from './_components/RefreshAllXButton';
+import { ListPager, parsePageParams } from './_components/ListPager';
 
 function platformLabel(platform: string | null | undefined): string {
   switch (platform) {
@@ -22,19 +24,25 @@ function platformLabel(platform: string | null | undefined): string {
   }
 }
 
-export default async function ContentListPage() {
-  // 一次查全量（LIMIT 50），避免 N+1。
+export default async function ContentListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; size?: string }>;
+}) {
   // 自建文章同住 content_items，但走 /p/<slug> 公开页与独立的后台入口，
   // 这里只列镜像。
-  const [mirrors, allShares] = await Promise.all([
-    db
-      .select()
-      .from(contentItems)
-      .where(isNotArticle)
-      .limit(50)
-      .orderBy(desc(contentItems.createdAt)),
-    db.select().from(shares).orderBy(desc(shares.createdAt)),
-  ]);
+  const [{ total }] = await db.select({ total: count() }).from(contentItems).where(isNotArticle);
+  const { page, size, pageCount } = parsePageParams(await searchParams, total);
+  const listQuery = db.select().from(contentItems).where(isNotArticle).orderBy(desc(contentItems.createdAt));
+  const mirrors = size === 'all' ? await listQuery : await listQuery.limit(size).offset((page - 1) * size);
+  const allShares =
+    mirrors.length === 0
+      ? []
+      : await db
+          .select()
+          .from(shares)
+          .where(inArray(shares.contentItemId, mirrors.map((m) => m.id)))
+          .orderBy(desc(shares.createdAt));
 
   // 按 contentItemId 分组
   const sharesMap = new Map<string, ShareRow[]>();
@@ -44,7 +52,7 @@ export default async function ContentListPage() {
     sharesMap.set(s.contentItemId, list);
   }
 
-  if (mirrors.length === 0) {
+  if (total === 0) {
     return (
       <div className="flex flex-col gap-6">
         <AdminPageHeader label="内容" title="内容管理" />
@@ -103,6 +111,8 @@ export default async function ContentListPage() {
           </tbody>
         </table>
       </div>
+
+      <ListPager page={page} size={size} pageCount={pageCount} total={total} />
     </div>
   );
 }
