@@ -186,7 +186,7 @@ GET {base}/http/?platform=x|youtube&query=<url>&pwd=<pwd>
 1. Create a Vercel project from this repository (framework preset: Next.js, Node 24).
 2. Attach a Postgres database (Neon via the Vercel marketplace works out of the box) and a Blob store; Vercel injects `POSTGRES_URL` and `BLOB_READ_WRITE_TOKEN`.
 3. Add `AUTH_SECRET`, `AGENT_REACH_BASE_URL`, `AGENT_REACH_PWD`, and optionally `NEXT_PUBLIC_SITE_URL` and the Turnstile keys.
-4. Run the migrations once against the production database: `POSTGRES_URL=... npm run db:migrate`.
+4. Migrations need no manual step: Vercel builds with `vercel-build` (`drizzle-kit migrate && next build`), which migrates the project's database before building; a failed migration fails the deployment and the previous version stays live.
 5. Deploy. `vercel.json` already schedules the daily health sample cron.
 6. Visit `/admin/login` to create the admin account, then fill in the video proxy / storage settings.
 

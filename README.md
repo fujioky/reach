@@ -186,7 +186,7 @@ GET {base}/http/?platform=x|youtube&query=<url>&pwd=<pwd>
 1. 从本仓库创建 Vercel 项目（框架预设 Next.js，Node 24）。
 2. 挂载一个 Postgres 数据库（Vercel 市场里的 Neon 开箱即用）和一个 Blob 存储；Vercel 会自动注入 `POSTGRES_URL` 与 `BLOB_READ_WRITE_TOKEN`。
 3. 添加 `AUTH_SECRET`、`AGENT_REACH_BASE_URL`、`AGENT_REACH_PWD`，按需添加 `NEXT_PUBLIC_SITE_URL` 与 Turnstile 密钥。
-4. 对生产数据库执行一次迁移：`POSTGRES_URL=... npm run db:migrate`。
+4. 数据库迁移不用手动跑：Vercel 构建时执行 `vercel-build`（`drizzle-kit migrate && next build`），先迁移项目的数据库再构建，迁移失败则这次部署失败、旧版本继续在线。
 5. 部署。`vercel.json` 已配置每日健康采样的 cron。
 6. 访问 `/admin/login` 创建管理员账号，然后填写视频代理 / 存储设置。
 
