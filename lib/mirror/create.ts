@@ -26,6 +26,7 @@ import type { FetchedContent, MediaItem } from '@/lib/fetcher/types';
 import { downloadImageToBlob } from '@/lib/blob/download-image';
 import { buildCommentRecords } from '@/lib/mirror/comments';
 import { storeCommentImages } from '@/lib/mirror/comment-images';
+import { mirrorPlatformData } from '@/lib/mirror/x-thread';
 import { createSnapshot } from '@/lib/mirror/versioning';
 import { evaluateQuota, getStorageUsage, LIMITS } from '@/lib/quota';
 import { getSetting } from '@/lib/settings';
@@ -171,6 +172,7 @@ export async function createMirrorFromUrl(input: {
   // Every comment is stored; `retained` marks the ones shown to visitors.
   const commentRecords = buildCommentRecords(content.comments, selectedCommentIds);
   const commentImages = await storeCommentImages(commentRecords);
+  const platformData = await mirrorPlatformData(content);
 
   onStage?.({ phase: 'saving' });
 
@@ -187,7 +189,7 @@ export async function createMirrorFromUrl(input: {
           publishedAt: content.publishedAt ? new Date(content.publishedAt) : null,
           body: content.body,
           stats: content.stats,
-          platformData: content.platformData,
+          platformData,
           fetchedAt: content.fetchedAt ? new Date(content.fetchedAt) : null,
           createdBy,
         })
@@ -233,6 +235,8 @@ export async function createMirrorFromUrl(input: {
           likes: record.likes,
           retained: record.retained,
           images: commentImages[index]!,
+          inReplyTo: record.inReplyTo,
+          replyCount: record.replyCount,
         });
       }
 

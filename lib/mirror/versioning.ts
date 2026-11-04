@@ -51,6 +51,8 @@ export interface MirrorSnapshot {
     likes: number;
     retained: boolean;
     images?: CommentImage[]; // absent in snapshots taken before comment images
+    inReplyTo?: string | null; // absent in snapshots taken before reply threads
+    replyCount?: number;
   }>;
 }
 
@@ -122,6 +124,8 @@ export async function createSnapshot(
       likes: c.likes ?? 0,
       retained: c.retained,
       images: c.images,
+      inReplyTo: c.inReplyTo,
+      replyCount: c.replyCount,
     })),
   };
 }
@@ -147,7 +151,10 @@ export function detectSubstantialChange(
   const oldComments = snapshot.comments
     .map((c) => ({ id: c.platformCommentId ?? '', text: c.text }))
     .sort((a, b) => a.id.localeCompare(b.id));
-  const newComments = newContent.comments
+  // Fetched comments are a tree (X replies nest); stored rows are flat.
+  const flat = (list: FetchedContent['comments']): FetchedContent['comments'] =>
+    list.flatMap((c) => [c, ...flat(c.replies ?? [])]);
+  const newComments = flat(newContent.comments)
     .map((c) => ({ id: c.id, text: c.content }))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (JSON.stringify(oldComments) !== JSON.stringify(newComments)) {
@@ -295,6 +302,8 @@ export async function rollbackVersion(
         likes: c.likes,
         retained: c.retained,
         images: c.images ?? [],
+        inReplyTo: c.inReplyTo ?? null,
+        replyCount: c.replyCount ?? 0,
       });
     }
   });

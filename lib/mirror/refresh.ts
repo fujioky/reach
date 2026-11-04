@@ -26,6 +26,7 @@ import { fetchContent } from '@/lib/fetcher';
 import { downloadImageToBlob } from '@/lib/blob/download-image';
 import { buildCommentRecords } from '@/lib/mirror/comments';
 import { storeCommentImages } from '@/lib/mirror/comment-images';
+import { mirrorPlatformData } from '@/lib/mirror/x-thread';
 import {
   createSnapshot,
   detectSubstantialChange,
@@ -120,10 +121,11 @@ export async function refreshMirror(
       .update(contentItems)
       .set({
         stats: content.stats,
-        platformData: content.platformData,
+        platformData: await mirrorPlatformData(content),
         refreshedAt: new Date(),
       })
       .where(eq(contentItems.id, contentItemId));
+    await syncCommentExtras(contentItemId, content);
     return { changed: false };
   }
 
@@ -175,6 +177,7 @@ export async function refreshMirror(
   // Refresh retains ALL comments (all comment IDs selected)
   const commentRecords = buildCommentRecords(content.comments, content.comments.map((c) => c.id));
   const commentImages = await storeCommentImages(commentRecords);
+  const platformData = await mirrorPlatformData(content);
 
   // 8. Write new data in db.transaction (contentItems + media + comments)
   //    Follow the createMirror transaction pattern exactly.
@@ -189,7 +192,7 @@ export async function refreshMirror(
           author: content.author,
           publishedAt: content.publishedAt ? new Date(content.publishedAt) : null,
           stats: content.stats,
-          platformData: content.platformData,
+          platformData,
           fetchedAt: content.fetchedAt ? new Date(content.fetchedAt) : null,
           refreshedAt: new Date(),
         })
@@ -235,6 +238,8 @@ export async function refreshMirror(
           likes: record.likes,
           retained: record.retained,
           images: commentImages[index]!,
+          inReplyTo: record.inReplyTo,
+          replyCount: record.replyCount,
         });
       }
     });
@@ -356,10 +361,11 @@ export async function previewRefresh(
       .update(contentItems)
       .set({
         stats: content.stats,
-        platformData: content.platformData,
+        platformData: await mirrorPlatformData(content),
         refreshedAt: new Date(),
       })
       .where(eq(contentItems.id, contentItemId));
+    await syncCommentExtras(contentItemId, content);
     return { ok: true, changed: false, message: '内容无变化' };
   }
 
@@ -433,6 +439,7 @@ export async function applyRefresh(
 
   const commentRecords = buildCommentRecords(content.comments, content.comments.map((c) => c.id));
   const commentImages = await storeCommentImages(commentRecords);
+  const platformData = await mirrorPlatformData(content);
 
   // 3. Compute next version number and snapshot current state BEFORE writing
   const maxVersionRows = await db
@@ -455,7 +462,7 @@ export async function applyRefresh(
           author: content.author,
           publishedAt: content.publishedAt ? new Date(content.publishedAt) : null,
           stats: content.stats,
-          platformData: content.platformData,
+          platformData,
           fetchedAt: content.fetchedAt ? new Date(content.fetchedAt) : null,
           refreshedAt: new Date(),
         })
@@ -498,6 +505,8 @@ export async function applyRefresh(
           likes: record.likes,
           retained: record.retained,
           images: commentImages[index]!,
+          inReplyTo: record.inReplyTo,
+          replyCount: record.replyCount,
         });
       }
 
@@ -605,4 +614,34 @@ export async function refreshTranscript(
     .where(eq(contentItems.id, contentItemId));
 
   return { ok: true, found: true, lang: content.platformData.transcriptLang };
+}
+
+/**
+ * A refresh that finds no substantial change still brings the stored comments
+ * up to date with what reach-upstream now returns: images (downloaded once,
+ * only for rows that have none yet), reply nesting and reply counts. Mirrors
+ * created before those fields existed pick them up this way without a version.
+ */
+async function syncCommentExtras(contentItemId: string, content: FetchedContent): Promise<void> {
+  const rows = await db
+    .select({ id: comments.id, platformCommentId: comments.platformCommentId, images: comments.images })
+    .from(comments)
+    .where(eq(comments.contentItemId, contentItemId));
+  const rowById = new Map(rows.map((r) => [r.platformCommentId, r]));
+  const records = buildCommentRecords(content.comments, content.comments.map((c) => c.id)).filter((r) =>
+    rowById.has(r.platformCommentId),
+  );
+  const needImages = records.filter((r) => r.images.length > 0 && rowById.get(r.platformCommentId)!.images.length === 0);
+  const stored = await storeCommentImages(needImages);
+  const imagesById = new Map(needImages.map((r, i) => [r.platformCommentId, stored[i]!]));
+  for (const record of records) {
+    await db
+      .update(comments)
+      .set({
+        inReplyTo: record.inReplyTo,
+        replyCount: record.replyCount,
+        ...(imagesById.has(record.platformCommentId) ? { images: imagesById.get(record.platformCommentId)! } : {}),
+      })
+      .where(eq(comments.id, rowById.get(record.platformCommentId)!.id));
+  }
 }

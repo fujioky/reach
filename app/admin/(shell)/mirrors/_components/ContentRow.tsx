@@ -63,6 +63,8 @@ export interface ContentRowProps {
   };
   shares: ShareRow[];
   platformLabel: string;
+  /** 「帖子」/「文章」 for X mirrors, null otherwise. */
+  kindLabel: string | null;
 }
 
 // ── 分析链接图标 ──────────────────────────────────────────────
@@ -73,7 +75,7 @@ const ChartIcon = () => (
 );
 
 // ── 主组件 ───────────────────────────────────────────────────
-export function ContentRow({ mirror, shares, platformLabel }: ContentRowProps) {
+export function ContentRow({ mirror, shares, platformLabel, kindLabel }: ContentRowProps) {
   const [expanded, setExpanded] = useState(false);
 
   const toggle = useCallback(() => setExpanded((p) => !p), []);
@@ -99,7 +101,18 @@ export function ContentRow({ mirror, shares, platformLabel }: ContentRowProps) {
         {/* 标题 */}
         <td className="max-w-[280px] border-b border-border px-2 py-3">
           <div className="truncate text-sm font-medium text-ink">{mirror.title}</div>
-          <div className="mt-0.5 text-xs text-muted">{platformLabel}</div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+            {platformLabel}
+            {kindLabel && (
+              <span
+                className={`rounded-full px-1.5 py-px text-[11px] font-medium ${
+                  kindLabel === '文章' ? 'bg-brand/10 text-brand' : 'bg-surface-2 text-muted'
+                }`}
+              >
+                {kindLabel}
+              </span>
+            )}
+          </div>
         </td>
         {/* 分享数 */}
         <td className="border-b border-border px-2 py-3 text-sm text-muted">

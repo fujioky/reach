@@ -3,6 +3,7 @@
 // Plan 02-02, Task 2 — Research §3 (platform abstraction).
 
 import { PlatformAdapter } from './types';
+import type { AgentReachComment, Comment } from '@/lib/fetcher/types';
 import {
   normalizeAuthor,
   normalizeStats,
@@ -64,7 +65,11 @@ export const twitterAdapter: PlatformAdapter = {
       publishedAt: item.created_at,
       media: normalizeTwitterMedia(item.images || []),
       stats: normalizeStats(item.stats),
-      comments: normalizeComments(item.comments || []),
+      comments: buildReplyTree(item.id, normalizeComments(item.comments || []), item.comments || []),
+      thread: {
+        parents: normalizeComments(item.parents || []),
+        parentMissing: item.parent_missing ?? null,
+      },
       // Store sourceId so refresh can reconstruct the post URL even if
       // source_url gets corrupted.
       platformData: {
@@ -72,8 +77,27 @@ export const twitterAdapter: PlatformAdapter = {
         transcript: item.transcript,
         transcriptLang: item.transcript_lang,
         transcriptVtt: item.transcript_vtt,
+        xArticle: item.x_article === true,
       },
       fetchedAt,
     };
   },
 };
+
+/**
+ * Nest X replies under the tweet they answer. reach-upstream returns the
+ * conversation flat, each reply carrying `in_reply_to`; a reply whose parent is
+ * the post itself, or is not in the batch, becomes a top-level comment.
+ */
+export function buildReplyTree(postId: string, comments: Comment[], raw: AgentReachComment[]): Comment[] {
+  const parentOf = new Map(raw.map((c) => [c.id, c.in_reply_to ?? null]));
+  const byId = new Map(comments.map((c) => [c.id, { ...c, replies: [] as Comment[] }]));
+  const roots: Comment[] = [];
+  for (const comment of byId.values()) {
+    const parentId = parentOf.get(comment.id);
+    const parent = parentId && parentId !== postId ? byId.get(parentId) : undefined;
+    if (parent) parent.replies.push(comment);
+    else roots.push(comment);
+  }
+  return roots;
+}

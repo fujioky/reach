@@ -121,6 +121,11 @@ export const comments = pgTable('comments', {
   // Images attached to the comment, copied to Blob like post images.
   // blobUrl is null when the download failed; such entries are not rendered.
   images: jsonb('images').$type<CommentImage[]>().notNull().default([]),
+  // X reply threads: the platform id of the tweet this comment answers (null
+  // for top-level comments and other platforms), and the platform-reported
+  // reply count, which tells the visitor page when more replies can be loaded.
+  inReplyTo: text('in_reply_to'),
+  replyCount: integer('reply_count').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

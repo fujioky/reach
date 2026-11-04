@@ -5,9 +5,8 @@
 // so Suspense truly streams (RESEARCH §3 Landmine).
 //
 // D-27: only retained=true comments are shown to visitors.
-// PATTERNS §13 Landmine: comments table has no parentId column — replies
-//   were flattened to independent rows during Phase 3 storage. MVP renders
-//   a flat list (no tree reconstruction).
+// Replies nest by comments.in_reply_to (rows stored before it existed have
+//   none and render top-level, as before).
 //
 // VIEW-02 empty edge: no comments → empty-state copy.
 //
@@ -21,14 +20,17 @@ import { db, comments } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { getSetting } from '@/lib/settings';
 import { lookupCache } from '@/lib/translation/cache';
-import { presignImage } from '@/lib/blob/presign';
-import { CommentListClient, type CommentData } from './CommentListClient';
+import { toThreadNodes } from '@/lib/mirror/thread-view';
+import { CommentListClient } from './CommentListClient';
 
 export async function CommentList({
   contentItemId,
+  token,
   targetLang = 'ZH',
 }: {
   contentItemId: string;
+  /** Share token; pass it on X pages so deeper replies can be loaded on demand. */
+  token?: string;
   targetLang?: string;
 }) {
   // Query comments for this content item
@@ -55,31 +57,18 @@ export async function CommentList({
     );
   }
 
-  // Presign every stored comment image in one batch. A failed presign only
-  // drops that image (same policy as MediaGallery).
-  const blobUrls = [...new Set(retained.flatMap((c) => c.images.flatMap((img) => img.blobUrl ?? [])))];
-  const presigned = new Map<string, string>();
-  const results = await Promise.allSettled(blobUrls.map((url) => presignImage(url)));
-  results.forEach((r, i) => {
-    if (r.status === 'fulfilled') presigned.set(blobUrls[i]!, r.value);
-  });
 
-  const commentData: CommentData[] = retained.map((comment) => {
-    const author = comment.author as { name: string; handle: string; avatarUrl?: string };
-    const cachedTranslation = cacheHits.get(comment.text);
-    return {
-      id: comment.id,
-      author,
-      text: comment.text,
-      images: comment.images.flatMap((img) => {
-        const src = img.blobUrl ? presigned.get(img.blobUrl) : undefined;
-        return src ? [src] : [];
-      }),
-      initialTranslations: cachedTranslation
-        ? { [comment.text]: cachedTranslation }
-        : {},
-    };
-  });
+  const nodes = await toThreadNodes(
+    retained.map((c) => ({
+      platformId: c.platformCommentId ?? c.id,
+      inReplyTo: c.inReplyTo,
+      author: c.author,
+      text: c.text,
+      images: c.images,
+      replyCount: c.replyCount,
+    })),
+    cacheHits,
+  );
 
-  return <CommentListClient comments={commentData} />;
+  return <CommentListClient comments={nodes} token={token} />;
 }

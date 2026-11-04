@@ -160,6 +160,26 @@ describe('detectSubstantialChange (D-53, Pitfall 5)', () => {
     expect(detectSubstantialChange(snapshot, content)).toBe(true);
   });
 
+  it('compares nested replies against the flat stored rows', () => {
+    const snapshot = makeSnapshot();
+    const [first] = snapshot.comments;
+    const author = { id: 'a', name: 'A', handle: 'a', url: '', avatarUrl: '' };
+    snapshot.comments = [first!, { ...first!, platformCommentId: 'c1r', text: 'reply' }];
+    const content = makeFetchedContent({
+      comments: [
+        {
+          id: first!.platformCommentId!,
+          content: first!.text,
+          author,
+          createdAt: '2026-06-26T01:00:00.000Z',
+          stats: { likes: 1, replies: 1 },
+          replies: [{ id: 'c1r', content: 'reply', author, createdAt: '2026-06-26T01:00:00.000Z', stats: { likes: 0, replies: 0 } }],
+        },
+      ],
+    });
+    expect(detectSubstantialChange(snapshot, content)).toBe(false);
+  });
+
   it('returns true when a new comment is added', () => {
     const snapshot = makeSnapshot();
     const content = makeFetchedContent({

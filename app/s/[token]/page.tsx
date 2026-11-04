@@ -28,6 +28,9 @@ import { PageBackground } from '@/app/_components/layout/PageBackground';
 import { SurfaceCard } from '@/app/_components/ui/SurfaceCard';
 import { MediaGallery } from './_components/MediaGallery';
 import { CommentList } from './_components/CommentList';
+import { ThreadParents } from './_components/ThreadParents';
+import { readThread } from '@/lib/mirror/x-thread';
+import { toThreadNodes } from '@/lib/mirror/thread-view';
 import { VideoSection } from './_components/VideoSection';
 import { StatsBar } from './_components/StatsBar';
 import { YouTubeActions } from './_components/YouTubeActions';
@@ -296,6 +299,11 @@ export default async function VisitorPage({
   // Blob URLs here (plain tweets have none and skip the query).
   const inlineUrls = bodyImageUrls(item.body);
   const inlineImages = await presignInlineImages(item.id, inlineUrls);
+  // Reply context: the tweets this post answers, root first.
+  const thread = readThread(item.platformData);
+  const threadParents = thread
+    ? await toThreadNodes(thread.parents.map((p) => ({ ...p, inReplyTo: null })))
+    : [];
 
   return (
     <Recorder contentItemId={item.id} shareId={share.id} visitorId={visitorCookie ?? 'anonymous'}>
@@ -312,6 +320,13 @@ export default async function VisitorPage({
 
               <PageTranslationShell translationAvailable={translationAvailable}>
                 {item.title && <TranslatedTitleUpdater title={item.title} />}
+                {(threadParents.length > 0 || thread?.parentMissing) && (
+                  <ThreadParents
+                    parents={threadParents}
+                    parentMissing={thread?.parentMissing ?? null}
+                    token={token}
+                  />
+                )}
                 <div data-track-block="body">
                   <SurfaceCard className="overflow-hidden shadow-md">
                     <div className="p-5 md:p-6">
@@ -390,7 +405,7 @@ export default async function VisitorPage({
                 <div data-track-block="comments">
                   <CommentsSection>
                     <Suspense fallback={<CommentsSkeleton />}>
-                      <CommentList contentItemId={item.id} />
+                      <CommentList contentItemId={item.id} token={token} />
                     </Suspense>
                   </CommentsSection>
                 </div>

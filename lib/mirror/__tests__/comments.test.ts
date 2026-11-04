@@ -63,3 +63,17 @@ describe('buildCommentRecords — D-27 all comments stored', () => {
     );
   });
 });
+
+describe('buildCommentRecords — reply threads', () => {
+  it('records each reply\'s parent id and the reply count', () => {
+    const records = buildCommentRecords(
+      [makeComment('c1', [makeComment('c1r1', [makeComment('c1r1r1')])])],
+      ['c1'],
+    );
+    expect(records.map((r) => [r.id, r.inReplyTo, r.replyCount])).toEqual([
+      ['c1', null, 1],
+      ['c1r1', 'c1', 1],
+      ['c1r1r1', 'c1r1', 0],
+    ]);
+  });
+});

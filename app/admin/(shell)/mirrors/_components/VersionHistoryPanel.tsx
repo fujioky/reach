@@ -47,7 +47,13 @@ function formatDate(d: Date) {
   });
 }
 
-function SnapshotPreview({ snapshot }: { snapshot: VersionSnapshot }) {
+function SnapshotPreview({
+  snapshot,
+  signedImages,
+}: {
+  snapshot: VersionSnapshot;
+  signedImages: Record<string, string>;
+}) {
   const { contentItem, media = [], comments = [] } = snapshot;
   const images = media.filter((m) => m.type === 'image');
   const videos = media.filter((m) => m.type === 'video');
@@ -86,7 +92,7 @@ function SnapshotPreview({ snapshot }: { snapshot: VersionSnapshot }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={i}
-              src={img.blobUrl ?? img.originalUrl}
+              src={(img.blobUrl && signedImages[img.blobUrl]) || img.originalUrl}
               alt="媒体图片"
               className="h-20 w-20 rounded-md object-cover"
               loading="lazy"
@@ -130,10 +136,12 @@ function VersionRow({
   version,
   isLatest,
   contentItemId,
+  signedImages,
 }: {
   version: MirrorVersion;
   isLatest: boolean;
   contentItemId: string;
+  signedImages: Record<string, string>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [rolling, setRolling] = useState(false);
@@ -232,7 +240,7 @@ function VersionRow({
       {/* 展开的快照预览 */}
       {expanded && (
         <div className="px-2 pb-3">
-          <SnapshotPreview snapshot={snapshot} />
+          <SnapshotPreview snapshot={snapshot} signedImages={signedImages} />
         </div>
       )}
     </div>
@@ -242,9 +250,11 @@ function VersionRow({
 interface VersionHistoryPanelProps {
   contentItemId: string;
   versions: MirrorVersion[];
+  /** blobUrl → presigned URL for snapshot images (Blob objects are private). */
+  signedImages: Record<string, string>;
 }
 
-export function VersionHistoryPanel({ contentItemId, versions }: VersionHistoryPanelProps) {
+export function VersionHistoryPanel({ contentItemId, versions, signedImages }: VersionHistoryPanelProps) {
   const latestVersionNumber = versions[0]?.versionNumber ?? null;
 
   if (versions.length === 0) {
@@ -263,6 +273,7 @@ export function VersionHistoryPanel({ contentItemId, versions }: VersionHistoryP
           version={v}
           isLatest={v.versionNumber === latestVersionNumber}
           contentItemId={contentItemId}
+          signedImages={signedImages}
         />
       ))}
     </div>

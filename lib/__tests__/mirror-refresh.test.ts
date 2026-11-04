@@ -239,6 +239,7 @@ describe('refreshMirror() — no-change path (stats-only, no new version)', () =
     });
     fetchContentMock.mockResolvedValue(makeFetchedContent());
     detectSubstantialChangeMock.mockReturnValue(false);
+    buildCommentRecordsMock.mockReturnValue([]);
   });
 
   it('updates only stats + refreshedAt, does NOT create a version, does NOT prune', async () => {

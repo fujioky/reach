@@ -70,6 +70,16 @@ export interface Comment {
 }
 
 /**
+ * X thread context: the tweets the post replies to, root first.
+ * `parentMissing` is the next tweet up when the chain stopped short of a root;
+ * the visitor page can load it on demand.
+ */
+export interface XThread {
+  parents: Comment[];
+  parentMissing: string | null;
+}
+
+/**
  * Engagement stats. Platform-reported totals (may differ from comments[] length).
  */
 export interface EngagementStats {
@@ -108,6 +118,9 @@ export interface FetchedContent {
   // Comments
   comments: Comment[];
 
+  // X only: what the post replies to (absent for other platforms)
+  thread?: XThread;
+
   // Platform-specific extras (preserved for rendering)
   platformData: {
     duration?: number;        // YouTube: seconds
@@ -115,6 +128,7 @@ export interface FetchedContent {
     transcriptLang?: string;  // subtitle track language ('zh-CN', 'en', ...) — zh needs no translation
     transcriptVtt?: string;   // timed WEBVTT for in-player captions (normalized by reach-upstream)
     sourceId?: string;        // platform-native ID (tweet ID, video ID) — for URL reconstruction
+    xArticle?: boolean;       // X: an X Article (long-form post) rather than a plain tweet
   };
 
   // Fetch metadata
@@ -151,6 +165,11 @@ export interface AgentReachItem {
   transcript?: string;
   transcript_lang?: string;
   transcript_vtt?: string;
+  x_article?: boolean;  // X: the tweet is an X Article
+  // X thread context (see reach-upstream reach_x)
+  in_reply_to?: string | null;
+  parents?: AgentReachComment[];
+  parent_missing?: string | null;
 }
 
 export interface AgentReachAuthor {
@@ -187,6 +206,7 @@ export interface AgentReachComment {
   stats: AgentReachStats;
   images?: (string | object)[];
   replies?: AgentReachComment[];
+  in_reply_to?: string | null;  // X: id of the tweet this one answers
 }
 
 export interface AgentReachError {

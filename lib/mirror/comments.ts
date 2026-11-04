@@ -25,6 +25,8 @@ export interface CommentRecord {
   likes: number;              // from stats.likes
   retained: boolean;          // D-27: true if admin kept this comment
   images: string[];           // attached image URLs, downloaded at write time
+  inReplyTo: string | null;   // platform id of the parent comment; null at top level
+  replyCount: number;         // platform-reported reply count (stats.replies)
 }
 
 /**
@@ -62,7 +64,7 @@ export function buildCommentRecords(
    *                  comments, this is computed from selectedSet; for replies,
    *                  it's passed down from the parent)
    */
-  function flatten(comment: Comment, retained: boolean): void {
+  function flatten(comment: Comment, retained: boolean, inReplyTo: string | null): void {
     records.push({
       id: comment.id,
       platformCommentId: comment.id,
@@ -72,12 +74,14 @@ export function buildCommentRecords(
       likes: comment.stats.likes,
       retained,
       images: comment.images ?? [],
+      inReplyTo,
+      replyCount: comment.stats.replies ?? 0,
     });
 
     // Recurse into replies — they inherit the parent's retained flag (D-25)
     if (comment.replies && comment.replies.length > 0) {
       for (const reply of comment.replies) {
-        flatten(reply, retained);
+        flatten(reply, retained, comment.id);
       }
     }
   }
@@ -85,7 +89,7 @@ export function buildCommentRecords(
   // Top-level comments: retained = whether ID is in the selected set (D-24)
   for (const comment of comments) {
     const retained = selectedSet.has(comment.id);
-    flatten(comment, retained);
+    flatten(comment, retained, null);
   }
 
   return records;

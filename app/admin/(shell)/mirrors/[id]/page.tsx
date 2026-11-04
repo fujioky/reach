@@ -17,6 +17,9 @@ import { VersionHistoryPanel } from '../_components/VersionHistoryPanel';
 import { MirrorPasswordPanel } from '../_components/MirrorPasswordPanel';
 import { getSitePasswordHash, readPasswordMode } from '@/lib/content/password';
 import { CopyLinkButton } from '../_components/CopyLinkButton';
+import { presignImage } from '@/lib/blob/presign';
+import { bodyImageUrls } from '@/lib/content/body-images';
+import { xKindLabel } from '@/lib/mirror/kind-label';
 import { CreateShareDialog } from '../_components/CreateShareDialog';
 import { RefreshMirrorButton } from '../_components/RefreshMirrorButton';
 import { RefreshTranscriptButton } from '../_components/RefreshTranscriptButton';
@@ -94,6 +97,19 @@ export default async function ContentDetailPage({
 
   if (!item) notFound();
 
+  // Stored images are private Blob objects: presign each once for the panels.
+  const signed = await presignImages([
+    ...mediaRows.filter((m) => m.type === 'image').map((m) => m.blobUrl),
+    ...commentRows.flatMap((c) => c.images.map((img) => img.blobUrl)),
+    ...mirrorVersionRows.flatMap((v) => snapshotImageBlobUrls(v.snapshot)),
+  ]);
+  const inlineUrls = new Set(bodyImageUrls(item.body));
+  const inlineImages = Object.fromEntries(
+    mediaRows.flatMap((m) =>
+      inlineUrls.has(m.originalUrl) && m.blobUrl && signed[m.blobUrl] ? [[m.originalUrl, signed[m.blobUrl]]] : [],
+    ),
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {/* ① 面包屑 */}
@@ -115,6 +131,7 @@ export default async function ContentDetailPage({
               {/* 平台徽章 */}
               <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
                 {platformLabel(item.platform)}
+                {xKindLabel(item.platform, item.platformData) && ` · ${xKindLabel(item.platform, item.platformData)}`}
               </span>
               {item.sourceUrl && (
                 <a
@@ -158,13 +175,16 @@ export default async function ContentDetailPage({
             type: m.type,
             originalUrl: m.originalUrl,
             blobUrl: m.blobUrl,
+            src: m.type === 'image' ? (m.blobUrl && signed[m.blobUrl]) || m.originalUrl : null,
           }))}
+          inlineImages={inlineImages}
           commentRows={commentRows.map((c) => ({
             id: c.id,
             author: c.author as { name: string; handle: string },
             text: c.text,
             likes: c.likes,
             postedAt: c.postedAt,
+            images: c.images.flatMap((img) => (img.blobUrl && signed[img.blobUrl] ? [signed[img.blobUrl]] : [])),
           }))}
         />
       </div>
@@ -284,6 +304,7 @@ export default async function ContentDetailPage({
         <h2 className="mb-4 text-lg font-semibold text-ink">版本历史</h2>
         <VersionHistoryPanel
           contentItemId={id}
+          signedImages={signed}
           versions={mirrorVersionRows.map((v) => ({
             id: v.id,
             versionNumber: v.versionNumber,
@@ -294,4 +315,18 @@ export default async function ContentDetailPage({
       </div>
     </div>
   );
+}
+
+/** blobUrl → presigned URL; a URL that fails to presign is left out. */
+async function presignImages(blobUrls: Array<string | null>): Promise<Record<string, string>> {
+  const unique = [...new Set(blobUrls.filter((u): u is string => !!u))];
+  const results = await Promise.allSettled(unique.map((u) => presignImage(u)));
+  return Object.fromEntries(
+    results.flatMap((r, i) => (r.status === 'fulfilled' ? [[unique[i]!, r.value]] : [])),
+  );
+}
+
+function snapshotImageBlobUrls(snapshot: unknown): Array<string | null> {
+  const mediaList = (snapshot as { media?: Array<{ type?: string; blobUrl?: string | null }> } | null)?.media;
+  return (mediaList ?? []).filter((m) => m.type === 'image').map((m) => m.blobUrl ?? null);
 }

@@ -5,12 +5,15 @@
 'use client';
 
 import { useState } from 'react';
+import { bodyImageUrl } from '@/lib/content/body-images';
 
 interface MediaRow {
   id: string;
   type: string | null;
   originalUrl: string;
   blobUrl: string | null;
+  /** Displayable image URL (presigned Blob, else the original); null for videos. */
+  src: string | null;
 }
 
 interface CommentRow {
@@ -19,6 +22,8 @@ interface CommentRow {
   text: string;
   likes: number | null;
   postedAt: Date | null;
+  /** Presigned URLs of the comment's stored images. */
+  images: string[];
 }
 
 interface ContentPreviewPanelProps {
@@ -26,6 +31,8 @@ interface ContentPreviewPanelProps {
   platform: string | null | undefined;
   mediaRows: MediaRow[];
   commentRows: CommentRow[];
+  /** X Article inline images: original URL → displayable src. */
+  inlineImages: Record<string, string>;
 }
 
 export function ContentPreviewPanel({
@@ -33,6 +40,7 @@ export function ContentPreviewPanel({
   platform,
   mediaRows,
   commentRows,
+  inlineImages,
 }: ContentPreviewPanelProps) {
   const [open, setOpen] = useState(false);
 
@@ -72,7 +80,11 @@ export function ContentPreviewPanel({
               {platform === 'youtube' ? '视频描述' : '正文'}
             </div>
             <div className="whitespace-pre-wrap rounded-lg bg-surface-2 px-4 py-3 text-[13px] leading-relaxed text-ink">
-              {body || <span className="text-subtle italic">（无正文）</span>}
+              {body ? (
+                <BodyPreview body={body} inlineImages={inlineImages} />
+              ) : (
+                <span className="text-subtle italic">（无正文）</span>
+              )}
             </div>
           </div>
 
@@ -87,7 +99,7 @@ export function ContentPreviewPanel({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     key={img.id}
-                    src={img.blobUrl ?? img.originalUrl}
+                    src={img.src ?? img.originalUrl}
                     alt="媒体图片"
                     className="h-24 w-24 rounded-lg object-cover"
                     loading="lazy"
@@ -131,6 +143,14 @@ export function ContentPreviewPanel({
                         )}
                       </div>
                       <div className="mt-0.5 text-[12px] leading-relaxed text-muted">{c.text}</div>
+                      {c.images.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {c.images.map((src) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={src} src={src} alt="评论图片" className="h-16 w-16 rounded-md object-cover" loading="lazy" />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -149,5 +169,22 @@ export function ContentPreviewPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/** Body text with X Article inline-image lines shown as the stored images. */
+function BodyPreview({ body, inlineImages }: { body: string; inlineImages: Record<string, string> }) {
+  return (
+    <>
+      {body.split(/\n{2,}/).map((para, i) => {
+        const url = bodyImageUrl(para);
+        if (!url) return <p key={i} className="mb-3 last:mb-0">{para}</p>;
+        const src = inlineImages[url];
+        return src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={i} src={src} alt="正文图片" className="mb-3 max-h-64 rounded-lg last:mb-0" loading="lazy" />
+        ) : null;
+      })}
+    </>
   );
 }

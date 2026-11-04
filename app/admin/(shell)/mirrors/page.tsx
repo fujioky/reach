@@ -11,6 +11,7 @@ import { AdminPageHeader } from '@/app/_components/admin/AdminPageHeader';
 import { db, contentItems, shares } from '@/lib/db';
 import { isNotArticle } from '@/lib/article/queries';
 import { ContentRow, type ShareRow } from './_components/ContentRow';
+import { xKindLabel } from '@/lib/mirror/kind-label';
 
 function platformLabel(platform: string | null | undefined): string {
   switch (platform) {
@@ -92,6 +93,7 @@ export default async function ContentListPage() {
                 mirror={mirror}
                 shares={sharesMap.get(mirror.id) ?? []}
                 platformLabel={platformLabel(mirror.platform)}
+                kindLabel={xKindLabel(mirror.platform, mirror.platformData)}
               />
             ))}
           </tbody>
