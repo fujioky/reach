@@ -16,6 +16,7 @@ import { extractVisitorIp, getVisitorCookie } from '@/lib/access/visitor';
 import { checkUnlocked } from '@/lib/content/password';
 import { turnstileGateRequired } from '@/lib/turnstile';
 import { getSetting } from '@/lib/settings';
+import { auth } from '@/auth';
 import { openPost } from '@/lib/mirror/x-post-cache';
 import { toThreadNodes } from '@/lib/mirror/thread-view';
 import { PageBackground } from '@/app/_components/layout/PageBackground';
@@ -56,11 +57,12 @@ export default async function OpenedPostPage({
   const unlock = await checkUnlocked(item);
   if (unlock.required && !unlock.unlocked) redirect(`/s/${token}`);
 
+  const adminHref = (await auth())?.user ? `/admin/mirrors/${item.id}` : undefined;
   const opened = await openPost(item, tweetId);
   if (!opened.ok) {
     if (opened.status === 404) notFound();
     return (
-      <Frame token={token} mirrorTitle={item.title}>
+      <Frame token={token} mirrorTitle={item.title} adminHref={adminHref}>
         <SurfaceCard className="p-6 text-center text-sm text-muted">这条帖子暂时打不开，请稍后再试。</SurfaceCard>
       </Frame>
     );
@@ -73,7 +75,7 @@ export default async function OpenedPostPage({
   const translationAvailable = Boolean(await getSetting('deepl_api_key'));
 
   return (
-    <Frame token={token} mirrorTitle={item.title}>
+    <Frame token={token} mirrorTitle={item.title} adminHref={adminHref}>
       <PageTranslationShell translationAvailable={translationAvailable}>
         {(parents.length > 0 || payload.parentMissing) && (
           <ThreadParents parents={parents} parentMissing={payload.parentMissing} token={token} earlierMode="open" />
@@ -116,11 +118,21 @@ export default async function OpenedPostPage({
   );
 }
 
-function Frame({ token, mirrorTitle, children }: { token: string; mirrorTitle: string; children: React.ReactNode }) {
+function Frame({
+  token,
+  mirrorTitle,
+  adminHref,
+  children,
+}: {
+  token: string;
+  mirrorTitle: string;
+  adminHref?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div data-platform="x" className="relative min-h-screen bg-paper text-ink">
       <PageBackground intensity="subtle" />
-      <ShareHeader platform="x" />
+      <ShareHeader platform="x" adminHref={adminHref} />
       <div className="relative mx-auto max-w-[720px] px-4 pb-12 pt-6 md:pt-10">
         <BackToMirror token={token} title={mirrorTitle} />
         {children}

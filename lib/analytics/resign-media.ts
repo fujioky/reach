@@ -23,3 +23,19 @@ export function resignArticleMediaTokens(json: string): string {
     return `${prefix}${signMediaToken(mediaId.toLowerCase())}`;
   });
 }
+
+// A presigned private-Blob URL: the store host, the pathname, and the signature
+// query that expires an hour after the page was rendered.
+const PRIVATE_BLOB_URL_RE =
+  /https:\/\/[a-z0-9]+\.private\.blob\.vercel-storage\.com\/([A-Za-z0-9._\-/]+)(?:\?[^"\s\\]*)?/g;
+
+/**
+ * Send private-Blob images in a recording through /api/admin/blob-image, which
+ * presigns them afresh, so post and comment images still show in a replay
+ * watched after the visitor's one-hour URLs expired.
+ */
+export function resignBlobImages(json: string): string {
+  return json.replace(PRIVATE_BLOB_URL_RE, (_match, pathname: string) =>
+    `/api/admin/blob-image?p=${encodeURIComponent(pathname)}`,
+  );
+}

@@ -43,7 +43,6 @@ import { PageTranslationShell } from './_components/TranslationContext';
 import { MirrorSidebar } from './_components/MirrorSidebar';
 import { GallerySkeleton, CommentsSkeleton, VideoPreparing } from './_components/Skeletons';
 import { ExpiredPage } from './_components/ExpiredPage';
-import { Recorder } from '@/app/_components/analytics/Recorder';
 import { TranslatedTitleUpdater } from './_components/TranslatedTitleUpdater';
 import {
   CommentsSection,
@@ -54,6 +53,7 @@ import {
 } from './_components/ShareChrome';
 import { SiteMetaLinks } from '@/app/_components/layout/SiteMetaLinks';
 import { getSetting } from '@/lib/settings';
+import { auth } from '@/auth';
 import { checkUnlocked } from '@/lib/content/password';
 import { UnlockGate } from '@/app/_components/content/UnlockGate';
 import { turnstileGateRequired, turnstileSiteKey } from '@/lib/turnstile';
@@ -184,6 +184,8 @@ export default async function VisitorPage({
   if (!item) notFound();
 
   const platform = item.platform as Platform;
+  // A signed-in admin gets a shortcut to this mirror's admin page.
+  const adminHref = (await auth())?.user ? `/admin/mirrors/${item.id}` : undefined;
   const isYouTube = platform === 'youtube';
 
   const author = item.author as {
@@ -210,10 +212,10 @@ export default async function VisitorPage({
   // ── YouTube 沉浸式布局（方案 B）──
   if (isYouTube) {
     return (
-      <Recorder contentItemId={item.id} shareId={share.id} visitorId={visitorCookie ?? 'anonymous'}>
+      <>
         <div data-platform="youtube" className="relative flex min-h-screen flex-col bg-paper text-ink">
           <PageBackground intensity="subtle" />
-          <ShareHeader platform="youtube" />
+          <ShareHeader platform="youtube" adminHref={adminHref} />
 
           <div className="relative mx-auto flex w-full max-w-[800px] flex-1 flex-col px-4 pb-8 md:px-0">
             <div
@@ -293,7 +295,7 @@ export default async function VisitorPage({
             <ShareExpiryStrip daysLeft={daysLeft} sourceUrl={item.sourceUrl} />
           )}
         </div>
-      </Recorder>
+      </>
     );
   }
 
@@ -314,10 +316,10 @@ export default async function VisitorPage({
     : [];
 
   return (
-    <Recorder contentItemId={item.id} shareId={share.id} visitorId={visitorCookie ?? 'anonymous'}>
+    <>
       <div data-platform="x" className="relative min-h-screen bg-paper text-ink">
         <PageBackground intensity="subtle" />
-        <ShareHeader platform="x" />
+        <ShareHeader platform="x" adminHref={adminHref} />
 
         <div className="relative mx-auto max-w-[1100px] px-4 pb-12 md:px-6">
           <div className="flex justify-center py-6 md:py-10">
@@ -453,7 +455,7 @@ export default async function VisitorPage({
           />
         </div>
       </div>
-    </Recorder>
+    </>
   );
 }
 

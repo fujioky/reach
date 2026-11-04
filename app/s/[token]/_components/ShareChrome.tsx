@@ -16,7 +16,14 @@ const YT_BADGE = (
   </svg>
 );
 
-export function ShareHeader({ platform }: { platform: 'x' | 'youtube' }) {
+export function ShareHeader({
+  platform,
+  adminHref,
+}: {
+  platform: 'x' | 'youtube';
+  /** Set only for a signed-in admin: the mirror's admin page. */
+  adminHref?: string;
+}) {
   const isX = platform === 'x';
   return (
     <header className="sticky top-0 z-30 border-b border-border/50 bg-paper/80 backdrop-blur-xl">
@@ -28,6 +35,20 @@ export function ShareHeader({ platform }: { platform: 'x' | 'youtube' }) {
           <ReachMark size={18} className="text-brand transition-transform group-hover:scale-105" />
           <span className="font-display text-[15px] font-bold tracking-tight text-ink">Reach</span>
         </Link>
+        <div className="flex items-center gap-2">
+        {adminHref && (
+          <Link
+            href={adminHref}
+            title="在后台打开这条镜像"
+            className="inline-flex items-center gap-1 rounded-full border border-transparent px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-border hover:bg-surface/60 hover:text-ink"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+            </svg>
+            管理
+          </Link>
+        )}
         <span
           className="ds-pill-badge"
           style={isX ? { color: '#1d9bf0', borderColor: 'color-mix(in srgb, #1d9bf0 20%, transparent)', backgroundColor: 'color-mix(in srgb, #1d9bf0 8%, transparent)' } : { color: '#cc0000', borderColor: 'color-mix(in srgb, #cc0000 20%, transparent)', backgroundColor: 'color-mix(in srgb, #cc0000 8%, transparent)' }}
@@ -35,6 +56,7 @@ export function ShareHeader({ platform }: { platform: 'x' | 'youtube' }) {
           {isX ? X_BADGE : YT_BADGE}
           {isX ? '镜像自 X' : '镜像自 YouTube'}
         </span>
+        </div>
       </div>
     </header>
   );

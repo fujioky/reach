@@ -12,7 +12,7 @@ import {
   getSessionRecording,
   getSessionTimeline,
 } from '@/lib/analytics/queries';
-import { resignArticleMediaTokens } from '@/lib/analytics/resign-media';
+import { resignArticleMediaTokens, resignBlobImages } from '@/lib/analytics/resign-media';
 
 export async function GET(
   _req: Request,
@@ -37,8 +37,8 @@ export async function GET(
 
   // 录制里嵌着访客当时的媒体签名 URL（6 小时过期）。回放/热力图在过期后
   // 重放这些请求会全部 403 —— 下发前把令牌重签为新的（存储数据不动）。
-  const body = resignArticleMediaTokens(
-    JSON.stringify({ session: meta, events, timeline }),
+  const body = resignBlobImages(
+    resignArticleMediaTokens(JSON.stringify({ session: meta, events, timeline })),
   );
   return new NextResponse(body, {
     headers: { 'content-type': 'application/json' },
