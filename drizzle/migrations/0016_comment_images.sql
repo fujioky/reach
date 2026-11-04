@@ -1,0 +1,1 @@
+ALTER TABLE "comments" ADD COLUMN "images" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -15,8 +15,10 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { db, contentItems, shares } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { db, contentItems, shares, media } from '@/lib/db';
+import { and, eq, inArray } from 'drizzle-orm';
+import { bodyImageUrls } from '@/lib/content/body-images';
+import { presignImage } from '@/lib/blob/presign';
 import type { Platform, EngagementStats } from '@/lib/fetcher/types';
 import { checkAccess, peekAccess } from '@/lib/access/control';
 import { extractVisitorIp, getVisitorCookie } from '@/lib/access/visitor';
@@ -290,6 +292,11 @@ export default async function VisitorPage({
   }
 
   // ── X / Twitter 标准布局（方案 A/C）──
+  // X Article bodies carry their images inline; resolve those to presigned
+  // Blob URLs here (plain tweets have none and skip the query).
+  const inlineUrls = bodyImageUrls(item.body);
+  const inlineImages = await presignInlineImages(item.id, inlineUrls);
+
   return (
     <Recorder contentItemId={item.id} shareId={share.id} visitorId={visitorCookie ?? 'anonymous'}>
       <div data-platform="x" className="relative min-h-screen bg-paper text-ink">
@@ -331,11 +338,12 @@ export default async function VisitorPage({
                       <TranslatedBody
                         text={item.body}
                         className="mt-4 text-[15px] leading-[1.65] text-ink"
+                        inlineImages={inlineImages}
                       />
 
                       <div data-track-block="gallery">
                         <Suspense fallback={<GallerySkeleton />}>
-                          <MediaGallery contentItemId={item.id} />
+                          <MediaGallery contentItemId={item.id} inlineUrls={inlineUrls} />
                         </Suspense>
                       </div>
 
@@ -418,6 +426,24 @@ export default async function VisitorPage({
 }
 
 // ── 工具函数 ──
+
+/** originalUrl → presigned Blob URL for the body's inline images that were stored. */
+async function presignInlineImages(
+  contentItemId: string,
+  urls: string[],
+): Promise<Record<string, string>> {
+  if (urls.length === 0) return {};
+  const rows = await db
+    .select({ originalUrl: media.originalUrl, blobUrl: media.blobUrl })
+    .from(media)
+    .where(and(eq(media.contentItemId, contentItemId), inArray(media.originalUrl, urls)));
+  const entries = await Promise.allSettled(
+    rows
+      .filter((r) => r.blobUrl)
+      .map(async (r) => [r.originalUrl, await presignImage(r.blobUrl!)] as const),
+  );
+  return Object.fromEntries(entries.flatMap((e) => (e.status === 'fulfilled' ? [e.value] : [])));
+}
 
 /** 格式化 YouTube 观看数：1234 → 1234，12000 → 1.2万，120000 → 12万 */
 function formatYouTubeViews(views: number | undefined): string {

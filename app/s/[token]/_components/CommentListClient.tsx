@@ -5,6 +5,7 @@
 // PageTranslationShell — no local toggle here.
 
 import { TranslatedBody } from './TranslatedBody';
+import { XImageGrid } from './XImageGrid';
 
 interface CommentAuthor {
   name: string;
@@ -16,6 +17,8 @@ export interface CommentData {
   id: string;
   author: CommentAuthor;
   text: string;
+  /** Presigned image URLs attached to the comment. */
+  images: string[];
   /** Server-prefetched translations from DB cache. May be partial or empty. */
   initialTranslations: Record<string, string>;
 }
@@ -68,6 +71,13 @@ export function CommentListClient({ comments }: CommentListClientProps) {
               splitByParagraph={false}
               initialTranslations={comment.initialTranslations}
             />
+            {comment.images.length > 0 && (
+              <div className="max-w-[360px]">
+                <XImageGrid
+                  images={comment.images.map((src, i) => ({ src, alt: `评论图片 ${i + 1}` }))}
+                />
+              </div>
+            )}
           </div>
         </div>
       ))}

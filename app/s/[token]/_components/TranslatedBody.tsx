@@ -16,6 +16,7 @@
 
 import { useEffect } from 'react';
 import { useTranslation } from './TranslationContext';
+import { bodyImageUrl } from '@/lib/content/body-images';
 
 interface TranslatedBodyProps {
   text: string;
@@ -28,6 +29,12 @@ interface TranslatedBodyProps {
    * via initialTranslations. This prop is only used to enqueue missing texts.
    */
   initialTranslations?: Record<string, string>;
+  /**
+   * Inline images: original URL → displayable src. A paragraph that is an
+   * inline-image line renders as that image (or nothing, when it has no src);
+   * it is never shown as text or sent for translation.
+   */
+  inlineImages?: Record<string, string>;
 }
 
 function splitParagraphs(text: string): string[] {
@@ -72,6 +79,7 @@ export function TranslatedBody({
   className = '',
   splitByParagraph = true,
   initialTranslations,
+  inlineImages = {},
 }: TranslatedBodyProps) {
   const ctx = useTranslation();
 
@@ -85,7 +93,7 @@ export function TranslatedBody({
   useEffect(() => {
     if (!ctx || !ctx.enabled) return;
     const missing = paragraphs.filter(
-      (p) => !ctx.translations.has(p) && !isChinese(p),
+      (p) => !ctx.translations.has(p) && !isChinese(p) && !bodyImageUrl(p),
     );
     if (missing.length > 0) ctx.enqueue(missing);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,6 +111,20 @@ export function TranslatedBody({
     <div className={className}>
       <div className="flex flex-col gap-3">
         {paragraphs.map((para, i) => {
+          const imageUrl = bodyImageUrl(para);
+          if (imageUrl) {
+            const src = inlineImages[imageUrl];
+            return src ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={src}
+                alt=""
+                loading="lazy"
+                className="my-1 w-full rounded-xl ring-1 ring-border/50"
+              />
+            ) : null;
+          }
           // Skip translation entirely for Chinese content (already the target language)
           const skipTranslation = isChinese(para);
           const translation = ctx?.enabled && !skipTranslation

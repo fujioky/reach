@@ -16,6 +16,7 @@
 
 import { eq, desc, notInArray, and, sql } from 'drizzle-orm';
 import { db, contentItems, media, comments, mirrorVersions } from '@/lib/db';
+import type { CommentImage } from '@/lib/db/schema';
 import type { FetchedContent } from '@/lib/fetcher/types';
 
 // ─── MirrorSnapshot (research Pattern 3) ────────────────────────
@@ -49,6 +50,7 @@ export interface MirrorSnapshot {
     postedAt: string | null; // ISO 8601
     likes: number;
     retained: boolean;
+    images?: CommentImage[]; // absent in snapshots taken before comment images
   }>;
 }
 
@@ -119,6 +121,7 @@ export async function createSnapshot(
       postedAt: c.postedAt ? c.postedAt.toISOString() : null,
       likes: c.likes ?? 0,
       retained: c.retained,
+      images: c.images,
     })),
   };
 }
@@ -291,6 +294,7 @@ export async function rollbackVersion(
         postedAt: c.postedAt ? new Date(c.postedAt) : null,
         likes: c.likes,
         retained: c.retained,
+        images: c.images ?? [],
       });
     }
   });

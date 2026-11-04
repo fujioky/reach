@@ -1,5 +1,5 @@
 // lib/fetcher/normalize.ts
-// Shared normalization helpers for converting raw agent-reach items
+// Shared normalization helpers for converting raw reach-upstream items
 // to the unified FetchedContent model.
 // Plan 02-02, Task 2 — FTCH-03.
 
@@ -19,7 +19,7 @@ import {
 } from '@/lib/video/select-source';
 
 /**
- * Normalize agent-reach author → unified Author.
+ * Normalize reach-upstream author → unified Author.
  * Maps avatar_url → avatarUrl, passes through id/name/handle/url.
  */
 export function normalizeAuthor(agentAuthor: AgentReachAuthor): Author {
@@ -33,7 +33,7 @@ export function normalizeAuthor(agentAuthor: AgentReachAuthor): Author {
 }
 
 /**
- * Normalize agent-reach stats → unified EngagementStats.
+ * Normalize reach-upstream stats → unified EngagementStats.
  * Passes through all 5 fields (likes, comments, reposts, views, collects).
  */
 export function normalizeStats(agentStats: AgentReachStats): EngagementStats {
@@ -47,7 +47,7 @@ export function normalizeStats(agentStats: AgentReachStats): EngagementStats {
 }
 
 /**
- * Normalize agent-reach comments → unified Comment[].
+ * Normalize reach-upstream comments → unified Comment[].
  * Maps content → content, author → normalizeAuthor(), created_at → createdAt,
  * stats.comments → stats.replies, stats.likes → stats.likes.
  * Recursively normalizes replies[] if present.
@@ -64,8 +64,24 @@ export function normalizeComments(
       likes: c.stats.likes,
       replies: c.stats.comments,
     },
+    images: commentImageUrls(c.images),
     replies: c.replies ? normalizeComments(c.replies) : undefined,
   }));
+}
+
+/**
+ * Image URLs attached to a comment. reach-upstream lists a comment's media as
+ * plain URLs; videos (video.twimg.com, .mp4) are dropped — comments show
+ * images only.
+ */
+function commentImageUrls(images: AgentReachComment['images']): string[] {
+  return (images ?? []).filter(
+    (url): url is string =>
+      typeof url === 'string' &&
+      /^https?:\/\//.test(url) &&
+      !url.includes('video.twimg.com') &&
+      !/\.mp4(\?|$)/i.test(url),
+  );
 }
 
 /**
@@ -134,7 +150,7 @@ export function normalizeTwitterMedia(
 /**
  * Normalize YouTube media.
  *
- * YouTube `images[]` from agent-reach contains 40+ thumbnail variants
+ * YouTube `images[]` from reach-upstream contains 40+ thumbnail variants
  * (1.jpg/2.jpg/3.jpg, mq1-3, hq1-3, sd1-3, default, mqdefault, hqdefault
  * with sqp params, sddefault, hq720, maxresdefault — each in .jpg + .webp).
  * These are all the same thumbnail at different resolutions/formats.

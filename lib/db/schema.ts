@@ -19,8 +19,8 @@ import {
  *
  * Known keys (see lib/settings/index.ts for typed accessors):
  *   video_proxy_url   — base URL for the video reverse proxy
- *   agent_reach_url   — base URL for the upstream Agent Reach API
- *   agent_reach_pwd   — password for the Agent Reach API
+ *   agent_reach_url   — base URL for the reach-upstream API
+ *   agent_reach_pwd   — password for the reach-upstream API
  */
 export const appSettings = pgTable('app_settings', {
   key: text('key').primaryKey(),
@@ -99,6 +99,11 @@ export const media = pgTable('media', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export interface CommentImage {
+  originalUrl: string;
+  blobUrl: string | null;
+}
+
 /**
  * comments — platform-native comments on a content item.
  */
@@ -113,6 +118,9 @@ export const comments = pgTable('comments', {
   postedAt: timestamp('posted_at'),
   likes: integer('likes').default(0),
   retained: boolean('retained').notNull().default(true), // D-27: all stored, retained flag
+  // Images attached to the comment, copied to Blob like post images.
+  // blobUrl is null when the download failed; such entries are not rendered.
+  images: jsonb('images').$type<CommentImage[]>().notNull().default([]),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

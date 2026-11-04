@@ -4,7 +4,7 @@
 //
 // Order matters:
 //   1. Re-fetch the post from the URL rather than accept content from the
-//      caller — agent-reach caches, and a Server Action body is capped ~1MB.
+//      caller — reach-upstream caches, and a Server Action body is capped ~1MB.
 //   2. Download images to Blob OUTSIDE the transaction, so no IO happens while
 //      it holds a connection. A failed image is a warning, not a rollback.
 //   3. One quick transaction: content_items + media + comments + the first
@@ -25,6 +25,7 @@ import { FetcherError } from '@/lib/fetcher/errors';
 import type { FetchedContent, MediaItem } from '@/lib/fetcher/types';
 import { downloadImageToBlob } from '@/lib/blob/download-image';
 import { buildCommentRecords } from '@/lib/mirror/comments';
+import { storeCommentImages } from '@/lib/mirror/comment-images';
 import { createSnapshot } from '@/lib/mirror/versioning';
 import { evaluateQuota, getStorageUsage, LIMITS } from '@/lib/quota';
 import { getSetting } from '@/lib/settings';
@@ -166,8 +167,12 @@ export async function createMirrorFromUrl(input: {
     );
   }
 
-  onStage?.({ phase: 'saving' });
   const selectedCommentIds = input.selectedCommentIds ?? content.comments.map((c) => c.id);
+  // Every comment is stored; `retained` marks the ones shown to visitors.
+  const commentRecords = buildCommentRecords(content.comments, selectedCommentIds);
+  const commentImages = await storeCommentImages(commentRecords);
+
+  onStage?.({ phase: 'saving' });
 
   try {
     const result = await db.transaction(async (tx) => {
@@ -218,8 +223,7 @@ export async function createMirrorFromUrl(input: {
         }
       }
 
-      // Every comment is stored; `retained` marks the ones shown to visitors.
-      for (const record of buildCommentRecords(content.comments, selectedCommentIds)) {
+      for (const [index, record] of commentRecords.entries()) {
         await tx.insert(comments).values({
           contentItemId,
           platformCommentId: record.platformCommentId,
@@ -228,6 +232,7 @@ export async function createMirrorFromUrl(input: {
           postedAt: record.postedAt ? new Date(record.postedAt) : null,
           likes: record.likes,
           retained: record.retained,
+          images: commentImages[index]!,
         });
       }
 

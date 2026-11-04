@@ -24,6 +24,7 @@ export interface CommentRecord {
   postedAt: string;           // ISO 8601 UTC
   likes: number;              // from stats.likes
   retained: boolean;          // D-27: true if admin kept this comment
+  images: string[];           // attached image URLs, downloaded at write time
 }
 
 /**
@@ -70,6 +71,7 @@ export function buildCommentRecords(
       postedAt: comment.createdAt,
       likes: comment.stats.likes,
       retained,
+      images: comment.images ?? [],
     });
 
     // Recurse into replies — they inherit the parent's retained flag (D-25)

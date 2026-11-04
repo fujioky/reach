@@ -4,7 +4,7 @@
 // Flow (Pitfall 4 — snapshot BEFORE writing):
 // 1. Read contentItem to get sourceUrl
 // 2. Snapshot current state BEFORE any changes (Pitfall 4)
-// 3. Re-fetch content from agent-reach
+// 3. Re-fetch content from reach-upstream
 // 4. Detect substantial change (body/comments/media only — Pitfall 5)
 // 5. If NOT changed: update only stats + refreshedAt, return { changed: false }
 // 6. If changed: create new version snapshot, insert, prune to 3
@@ -25,6 +25,7 @@ import { db, contentItems, media, comments, mirrorVersions, refreshPreviews } fr
 import { fetchContent } from '@/lib/fetcher';
 import { downloadImageToBlob } from '@/lib/blob/download-image';
 import { buildCommentRecords } from '@/lib/mirror/comments';
+import { storeCommentImages } from '@/lib/mirror/comment-images';
 import {
   createSnapshot,
   detectSubstantialChange,
@@ -66,7 +67,7 @@ export async function refreshMirror(
     return { changed: false, error: 'Mirror has no source URL' };
   }
 
-  // 1b. Guard: if source_url is a media URL (Phase 3 data bug — agent-reach
+  // 1b. Guard: if source_url is a media URL (Phase 3 data bug — reach-upstream
   // sometimes returned media URLs as item.url), reconstruct the canonical
   // post URL from platformData.sourceId + author.handle.
   let fetchUrl = item.sourceUrl;
@@ -96,7 +97,7 @@ export async function refreshMirror(
   // 2. Snapshot current state BEFORE any changes (Pitfall 4)
   const snapshot = await createSnapshot(contentItemId);
 
-  // 3. Re-fetch content from agent-reach
+  // 3. Re-fetch content from reach-upstream
   let content: FetchedContent;
   try {
     content = await fetchContent(fetchUrl);
@@ -171,6 +172,10 @@ export async function refreshMirror(
     }
   }
 
+  // Refresh retains ALL comments (all comment IDs selected)
+  const commentRecords = buildCommentRecords(content.comments, content.comments.map((c) => c.id));
+  const commentImages = await storeCommentImages(commentRecords);
+
   // 8. Write new data in db.transaction (contentItems + media + comments)
   //    Follow the createMirror transaction pattern exactly.
   try {
@@ -219,11 +224,8 @@ export async function refreshMirror(
       }
 
       // 8c. Delete old comments and insert new ones
-      //     Refresh retains ALL comments (all comment IDs selected)
-      const allCommentIds = content.comments.map((c) => c.id);
-      const commentRecords = buildCommentRecords(content.comments, allCommentIds);
       await tx.delete(comments).where(eq(comments.contentItemId, contentItemId));
-      for (const record of commentRecords) {
+      for (const [index, record] of commentRecords.entries()) {
         await tx.insert(comments).values({
           contentItemId,
           platformCommentId: record.platformCommentId,
@@ -232,6 +234,7 @@ export async function refreshMirror(
           postedAt: record.postedAt ? new Date(record.postedAt) : null,
           likes: record.likes,
           retained: record.retained,
+          images: commentImages[index]!,
         });
       }
     });
@@ -428,6 +431,9 @@ export async function applyRefresh(
     }
   }
 
+  const commentRecords = buildCommentRecords(content.comments, content.comments.map((c) => c.id));
+  const commentImages = await storeCommentImages(commentRecords);
+
   // 3. Compute next version number and snapshot current state BEFORE writing
   const maxVersionRows = await db
     .select({ max: sql`COALESCE(MAX(${mirrorVersions.versionNumber}), -1)`.as('max') })
@@ -481,10 +487,8 @@ export async function applyRefresh(
       }
 
       // 4c. Replace comments
-      const allCommentIds = content.comments.map((c) => c.id);
-      const commentRecords = buildCommentRecords(content.comments, allCommentIds);
       await tx.delete(comments).where(eq(comments.contentItemId, contentItemId));
-      for (const record of commentRecords) {
+      for (const [index, record] of commentRecords.entries()) {
         await tx.insert(comments).values({
           contentItemId,
           platformCommentId: record.platformCommentId,
@@ -493,6 +497,7 @@ export async function applyRefresh(
           postedAt: record.postedAt ? new Date(record.postedAt) : null,
           likes: record.likes,
           retained: record.retained,
+          images: commentImages[index]!,
         });
       }
 

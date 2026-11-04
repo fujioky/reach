@@ -17,7 +17,14 @@ import { eq } from 'drizzle-orm';
 import { presignImage } from '@/lib/blob/presign';
 import { XImageGrid } from './XImageGrid';
 
-export async function MediaGallery({ contentItemId }: { contentItemId: string }) {
+export async function MediaGallery({
+  contentItemId,
+  inlineUrls = [],
+}: {
+  contentItemId: string;
+  /** Original URLs already shown inline in the body — left out of the grid. */
+  inlineUrls?: string[];
+}) {
   // Query media for this content item
   const itemMedia = await db
     .select()
@@ -25,7 +32,9 @@ export async function MediaGallery({ contentItemId }: { contentItemId: string })
     .where(eq(media.contentItemId, contentItemId));
 
   // Filter to images with a valid blobUrl (video goes to VideoSection)
-  const imageRows = itemMedia.filter((m) => m.type === 'image' && m.blobUrl);
+  const imageRows = itemMedia.filter(
+    (m) => m.type === 'image' && m.blobUrl && !inlineUrls.includes(m.originalUrl),
+  );
   if (imageRows.length === 0) return null; // VIEW-02 empty edge
 
   // Batch presign all image URLs in parallel (D-39).

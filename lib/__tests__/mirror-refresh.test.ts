@@ -308,6 +308,7 @@ describe('refreshMirror() — change path (substantial change detected)', () => 
         postedAt: '2026-06-26T12:00:00.000Z',
         likes: 1,
         retained: true,
+        images: [],
       },
     ]);
   });

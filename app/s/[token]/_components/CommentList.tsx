@@ -21,6 +21,7 @@ import { db, comments } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { getSetting } from '@/lib/settings';
 import { lookupCache } from '@/lib/translation/cache';
+import { presignImage } from '@/lib/blob/presign';
 import { CommentListClient, type CommentData } from './CommentListClient';
 
 export async function CommentList({
@@ -54,6 +55,15 @@ export async function CommentList({
     );
   }
 
+  // Presign every stored comment image in one batch. A failed presign only
+  // drops that image (same policy as MediaGallery).
+  const blobUrls = [...new Set(retained.flatMap((c) => c.images.flatMap((img) => img.blobUrl ?? [])))];
+  const presigned = new Map<string, string>();
+  const results = await Promise.allSettled(blobUrls.map((url) => presignImage(url)));
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') presigned.set(blobUrls[i]!, r.value);
+  });
+
   const commentData: CommentData[] = retained.map((comment) => {
     const author = comment.author as { name: string; handle: string; avatarUrl?: string };
     const cachedTranslation = cacheHits.get(comment.text);
@@ -61,6 +71,10 @@ export async function CommentList({
       id: comment.id,
       author,
       text: comment.text,
+      images: comment.images.flatMap((img) => {
+        const src = img.blobUrl ? presigned.get(img.blobUrl) : undefined;
+        return src ? [src] : [];
+      }),
       initialTranslations: cachedTranslation
         ? { [comment.text]: cachedTranslation }
         : {},

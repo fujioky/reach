@@ -1,11 +1,11 @@
 // lib/fetcher/types.ts
-// Unified content model + raw agent-reach response types.
+// Unified content model + raw reach-upstream response types.
 // Plan 02-02, Task 1 — FTCH-03 (unified FetchedContent model).
 
 // ─── Platform ─────────────────────────────────────────
 
 /**
- * Platform identifier — maps to agent-reach platform parameter.
+ * Platform identifier — maps to reach-upstream platform parameter.
  * Extensible: add 'xhs' | 'web' when those adapters are implemented.
  */
 export type Platform = 'x' | 'youtube';
@@ -36,7 +36,7 @@ export interface MediaItem {
   type: 'image' | 'video';
   originalUrl: string;       // original platform URL (twimg, googlevideo, ytimg)
   // Video-specific (undefined for images)
-  videoSources?: VideoSource[];  // YouTube only — all sources from agent-reach
+  videoSources?: VideoSource[];  // YouTube only — all sources from reach-upstream
   selectedSource?: VideoSource;  // Best progressive source (D-01 selection)
   // Metadata
   filesize?: number;          // from selectedSource.filesize
@@ -65,6 +65,7 @@ export interface Comment {
     likes: number;
     replies: number;          // platform-reported reply count
   };
+  images?: string[];          // attached image URLs (videos excluded)
   replies?: Comment[];
 }
 
@@ -81,7 +82,7 @@ export interface EngagementStats {
 
 /**
  * The core Fetcher output — unified content model across platforms.
- * FTCH-03: normalized from agent-reach platform-specific responses.
+ * FTCH-03: normalized from reach-upstream platform-specific responses.
  */
 export interface FetchedContent {
   // Identity
@@ -112,15 +113,15 @@ export interface FetchedContent {
     duration?: number;        // YouTube: seconds
     transcript?: string;      // video subtitle text (YouTube; X when the video has a track)
     transcriptLang?: string;  // subtitle track language ('zh-CN', 'en', ...) — zh needs no translation
-    transcriptVtt?: string;   // timed WEBVTT for in-player captions (normalized by agent-reach)
+    transcriptVtt?: string;   // timed WEBVTT for in-player captions (normalized by reach-upstream)
     sourceId?: string;        // platform-native ID (tweet ID, video ID) — for URL reconstruction
   };
 
   // Fetch metadata
-  fetchedAt: string;          // ISO 8601 — when Fetcher called agent-reach
+  fetchedAt: string;          // ISO 8601 — when Fetcher called reach-upstream
 }
 
-// ─── Raw agent-reach response types (internal) ────────
+// ─── Raw reach-upstream response types (internal) ────────
 
 export interface AgentReachResponse {
   ok: boolean;
