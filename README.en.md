@@ -97,7 +97,7 @@ Things to know:
 
 **Install and connect**
 
-1. Deploy this repository and run the migrations (`npm run db:migrate`; the extension needs the `api_tokens` table).
+1. Deploy this repository (the build migrates the database; the extension needs its `api_tokens` table).
 2. Download the zip from the extension's [Releases](https://github.com/fujioky/reach-browser-extension/releases/latest). Chrome / Edge: unzip it into a folder you keep, turn on Developer mode in `chrome://extensions` and "Load unpacked" that folder. Firefox: the zip is unsigned — load it temporarily from `about:debugging`, or have it signed on AMO as unlisted for everyday use.
 3. Open the extension's options, enter the Reach address and sign in with the admin account. Reach checks the password and issues a token for this browser alone; the extension never stores the password. The admin page 系统 → 浏览器扩展 shows the Reach address to copy and lists every signed-in extension with its last use, each revocable.
 
@@ -145,8 +145,7 @@ git clone https://github.com/fujioky/reach.git
 cd reach
 npm install
 cp .env.local.example .env.local   # fill in POSTGRES_URL, AUTH_SECRET, BLOB_READ_WRITE_TOKEN, AGENT_REACH_*
-npm run db:migrate
-npm run dev
+npm run dev                         # migrates the database to the latest first
 ```
 
 Open `http://localhost:3000/admin/login`. When the users table is empty the login page becomes a one-time setup form that creates the single admin account. Everything else — video proxy, S3 bucket, DeepL key, AI parser, content password — is configured at runtime under **Admin → 系统设置**.
@@ -186,7 +185,7 @@ GET {base}/http/?platform=x|youtube&query=<url>&pwd=<pwd>
 1. Create a Vercel project from this repository (framework preset: Next.js, Node 24).
 2. Attach a Postgres database (Neon via the Vercel marketplace works out of the box) and a Blob store; Vercel injects `POSTGRES_URL` and `BLOB_READ_WRITE_TOKEN`.
 3. Add `AUTH_SECRET`, `AGENT_REACH_BASE_URL`, `AGENT_REACH_PWD`, and optionally `NEXT_PUBLIC_SITE_URL` and the Turnstile keys.
-4. Migrations need no manual step: Vercel builds with `vercel-build` (`drizzle-kit migrate && next build`), which migrates the project's database before building; a failed migration fails the deployment and the previous version stays live.
+4. The database needs no manual setup or upgrade: `npm run build` (which Vercel runs on deploy) runs `drizzle-kit migrate` first, creating every table in a fresh database and applying only the missing migrations to an existing one; a failed migration fails the build and the previous version stays live.
 5. Deploy. `vercel.json` already schedules the daily health sample cron.
 6. Visit `/admin/login` to create the admin account, then fill in the video proxy / storage settings.
 

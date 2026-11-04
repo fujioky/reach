@@ -97,7 +97,7 @@ Reach 由几个独立仓库协作，各仓库自身的说明更完整：
 
 **安装与连接**
 
-1. 部署本仓库并执行数据库迁移（`npm run db:migrate`，扩展需要其中的 `api_tokens` 表）。
+1. 部署本仓库（构建时会自动完成数据库迁移，扩展需要其中的 `api_tokens` 表）。
 2. 从扩展的 [Releases](https://github.com/fujioky/reach-browser-extension/releases/latest) 下载 zip。Chrome / Edge：解压到固定文件夹，在 `chrome://extensions` 打开开发者模式，「加载已解压的扩展程序」选这个文件夹。Firefox：zip 未签名，可在 `about:debugging` 临时载入，长期使用需到 AMO 以「不公开」方式签名。
 3. 打开扩展设置，填入 Reach 地址，用管理员账号登录。Reach 验证密码后签发一个只给这个浏览器用的令牌，扩展不保存密码。后台「系统 → 浏览器扩展」页面提供可复制的 Reach 地址，并列出所有登录过的扩展和最近使用时间，可以逐个撤销。
 
@@ -145,8 +145,7 @@ git clone https://github.com/fujioky/reach.git
 cd reach
 npm install
 cp .env.local.example .env.local   # 填入 POSTGRES_URL、AUTH_SECRET、BLOB_READ_WRITE_TOKEN、AGENT_REACH_*
-npm run db:migrate
-npm run dev
+npm run dev                         # 启动前自动把数据库迁移到最新
 ```
 
 打开 `http://localhost:3000/admin/login`。用户表为空时，登录页会变成一次性的初始化表单，创建唯一的管理员账号。其余配置——视频代理、S3 存储桶、DeepL 密钥、AI 解析器、内容密码——都在运行时于 **后台 → 系统设置** 中完成。
@@ -186,7 +185,7 @@ GET {base}/http/?platform=x|youtube&query=<url>&pwd=<pwd>
 1. 从本仓库创建 Vercel 项目（框架预设 Next.js，Node 24）。
 2. 挂载一个 Postgres 数据库（Vercel 市场里的 Neon 开箱即用）和一个 Blob 存储；Vercel 会自动注入 `POSTGRES_URL` 与 `BLOB_READ_WRITE_TOKEN`。
 3. 添加 `AUTH_SECRET`、`AGENT_REACH_BASE_URL`、`AGENT_REACH_PWD`，按需添加 `NEXT_PUBLIC_SITE_URL` 与 Turnstile 密钥。
-4. 数据库迁移不用手动跑：Vercel 构建时执行 `vercel-build`（`drizzle-kit migrate && next build`），先迁移项目的数据库再构建，迁移失败则这次部署失败、旧版本继续在线。
+4. 数据库不用手动建表或升级：`npm run build`（Vercel 部署时也是它）会先执行 `drizzle-kit migrate`，全新的空库从头建表，已有的库只补上缺的迁移；迁移失败则构建失败，旧版本继续在线。
 5. 部署。`vercel.json` 已配置每日健康采样的 cron。
 6. 访问 `/admin/login` 创建管理员账号，然后填写视频代理 / 存储设置。
 

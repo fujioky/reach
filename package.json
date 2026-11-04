@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "vercel-build": "drizzle-kit migrate && next build",
+    "predev": "drizzle-kit migrate",
+    "build": "drizzle-kit migrate && next build",
     "start": "next start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

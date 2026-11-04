@@ -4,7 +4,7 @@
 
 - **Build**: `npm run build` (Next.js 16 + Turbopack)
 - **Deploy to Vercel**: `vercel build --prod && vercel deploy --prebuilt --prod`
-- **Migrations run on deploy**: Vercel runs the `vercel-build` script (`drizzle-kit migrate && next build`) instead of `build`, so each deployment migrates its own project's database first and fails if the migration fails. `npm run build` stays migration-free for local builds. Note that `drizzle-kit migrate` prints no error when it fails (only exit code 1); to see why, run drizzle-orm's `migrate()` in a script.
+- **Migrations are automatic**: `npm run build` is `drizzle-kit migrate && next build` and `npm run dev` migrates first (`predev`), so a fresh database gets every table and an existing one only its missing migrations — on Vercel deploys, self-hosted builds and local dev alike. `drizzle.config.ts` loads `.env*` like Next does, so POSTGRES_URL needs no sourcing. A failed migration fails the build. `drizzle-kit migrate` prints no error when it fails (only exit code 1); to see why, run drizzle-orm's `migrate()` in a script. A local `npm run build` migrates whatever `.env.local` points at (the demo database here).
 - **Node runtime**: several `/api/*` routes require `export const runtime = 'nodejs'` because they rely on Node.js fetch streaming / S3 / PostgreSQL.
 
 ## Self-Authored Articles
