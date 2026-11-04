@@ -13,6 +13,8 @@ function resolveBuildSha(): string {
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_SHA: resolveBuildSha(),
+    // Vercel builds every deployment, so build time is the deployment time.
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
   },
   // Allow LAN/dev origins to access the dev server. Next.js 16 blocks
   // cross-origin requests to dev-only assets (RSC stream, HMR) by default,

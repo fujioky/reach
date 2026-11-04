@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     version: snapshot.version,
+    deployedAt: snapshot.deployedAt,
     checkedAt: snapshot.checkedAt,
     services: snapshot.services,
     history,

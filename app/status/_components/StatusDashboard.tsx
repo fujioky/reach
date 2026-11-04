@@ -8,6 +8,7 @@ import { historyToChartSeries, type HealthSample } from '@/lib/health/history';
 
 type HealthPayload = {
   version: string;
+  deployedAt: string | null;
   checkedAt: string;
   services: ServiceStatus[];
   history: HealthSample[];
@@ -130,6 +131,18 @@ export function StatusDashboard({ initial }: { initial: HealthPayload }) {
                 {payload.version}
               </code>
             </div>
+            {payload.deployedAt && (
+              <div className="mt-1">
+                部署于{' '}
+                {new Date(payload.deployedAt).toLocaleString('zh-CN', {
+                  year: 'numeric',
+                  month: 'numeric',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </div>
+            )}
             <div className="mt-1">
               检测于{' '}
               {new Date(payload.checkedAt).toLocaleString('zh-CN', {

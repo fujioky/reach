@@ -51,6 +51,7 @@ export default async function StatusPage() {
           <StatusDashboard
             initial={{
               version: snapshot.version,
+              deployedAt: snapshot.deployedAt,
               checkedAt: snapshot.checkedAt,
               services: snapshot.services,
               history,

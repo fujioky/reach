@@ -4,7 +4,7 @@ import { db, media } from '@/lib/db';
 import { eq, desc } from 'drizzle-orm';
 import { checkS3Connection } from '@/lib/storage/s3';
 import { getAllSettings } from '@/lib/settings';
-import { getBuildVersion } from '@/lib/version';
+import { getBuildTime, getBuildVersion } from '@/lib/version';
 
 export type HealthProbeResult = {
   ok: boolean;
@@ -305,6 +305,7 @@ export async function collectSystemHealth(
   options?: { publicLabels?: boolean },
 ): Promise<{
   version: string;
+  deployedAt: string | null;
   checkedAt: string;
   services: ServiceStatus[];
 }> {
@@ -436,6 +437,7 @@ export async function collectSystemHealth(
 
   return {
     version: getBuildVersion(),
+    deployedAt: getBuildTime(),
     checkedAt: new Date().toISOString(),
     services: visibleServices,
   };
