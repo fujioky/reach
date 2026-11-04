@@ -140,6 +140,7 @@ export function StatusDashboard({ initial }: { initial: HealthPayload }) {
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
+                  timeZone: 'Asia/Shanghai',
                 })}
               </div>
             )}
@@ -151,6 +152,7 @@ export function StatusDashboard({ initial }: { initial: HealthPayload }) {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
+                timeZone: 'Asia/Shanghai',
               })}
               {refreshing && <span className="ml-2 text-brand">刷新中…</span>}
             </div>
