@@ -131,6 +131,8 @@ vi.mock('@/lib/mirror/comments', () => ({
   buildCommentRecords: () => [],
 }));
 
+vi.mock('next/server', () => ({ after: () => undefined }));
+vi.mock('@/lib/mirror/x-thread-expand', () => ({ prefetchMissingReplies: vi.fn() }));
 vi.mock('next/cache', () => ({
   revalidatePath: () => {},
 }));

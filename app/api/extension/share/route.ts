@@ -19,6 +19,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 300;
 
 import { after } from 'next/server';
+import { prefetchMissingReplies } from '@/lib/mirror/x-thread-expand';
 import { z } from 'zod';
 
 import { authenticateApiRequest } from '@/lib/auth/api-token';
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
           if (!outcome.reused) {
             // Storage upload can take minutes; the link works without it.
             after(async () => {
+              await prefetchMissingReplies(outcome.mirrorId);
               const warnings = await uploadMirrorVideos(outcome.mirrorId);
               for (const warning of warnings) console.warn(`[extension/share] ${warning}`);
             });

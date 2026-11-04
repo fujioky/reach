@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { PendingSubmitButton } from '@/app/_components/ui/PendingSubmitButton';
 import { auth } from '@/auth';
 import { db, users } from '@/lib/db';
 import { setupAdmin, login } from './actions';
@@ -85,7 +86,7 @@ function SetupForm() {
         <label className={labelClass} htmlFor="confirmPassword">确认密码</label>
         <input className={inputClass} id="confirmPassword" name="confirmPassword" type="password" required placeholder="••••••••" />
       </div>
-      <button className={buttonClass} type="submit">设置并登录</button>
+      <PendingSubmitButton className={buttonClass} pendingLabel="正在设置…">设置并登录</PendingSubmitButton>
     </form>
   );
 }
@@ -113,7 +114,7 @@ function LoginForm({ defaultUsername }: { defaultUsername?: string }) {
           <span className="mt-0.5 block text-[11px] text-subtle">勾选后 30 天内免登录；不勾选则 8 小时后需重新登录</span>
         </span>
       </label>
-      <button className={buttonClass} type="submit">登录</button>
+      <PendingSubmitButton className={buttonClass} pendingLabel="正在登录…">登录</PendingSubmitButton>
     </form>
   );
 }

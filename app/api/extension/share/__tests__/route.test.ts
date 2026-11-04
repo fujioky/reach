@@ -14,6 +14,7 @@ let quickShareImpl: (input: Record<string, unknown>) => Promise<Record<string, u
 let afterCallbacks: Array<() => Promise<void>> = [];
 let uploadedMirrors: string[] = [];
 
+vi.mock('@/lib/mirror/x-thread-expand', () => ({ prefetchMissingReplies: vi.fn() }));
 vi.mock('next/server', () => ({
   after: (callback: () => Promise<void>) => {
     afterCallbacks.push(callback);

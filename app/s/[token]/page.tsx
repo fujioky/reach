@@ -32,6 +32,8 @@ import { ThreadParents } from './_components/ThreadParents';
 import { readThread } from '@/lib/mirror/x-thread';
 import { toThreadNodes } from '@/lib/mirror/thread-view';
 import { TableOfContents } from '@/app/_components/article/TableOfContents';
+import { after } from 'next/server';
+import { prefetchMissingReplies } from '@/lib/mirror/x-thread-expand';
 import { VideoSection } from './_components/VideoSection';
 import { StatsBar } from './_components/StatsBar';
 import { YouTubeActions } from './_components/YouTubeActions';
@@ -300,6 +302,9 @@ export default async function VisitorPage({
   // Blob URLs here (plain tweets have none and skip the query).
   const inlineUrls = bodyImageUrls(item.body);
   const inlineImages = await presignInlineImages(item.id, inlineUrls);
+  // Replies X reports but the mirror lacks are fetched in the background, so
+  // the next visitor sees each comment's first reply without waiting.
+  after(() => prefetchMissingReplies(item.id));
   // An X Article gets headings and an outline beside it.
   const isXArticle = (item.platformData as { xArticle?: boolean } | null)?.xArticle === true;
   // Reply context: the tweets this post answers, root first.
@@ -321,7 +326,7 @@ export default async function VisitorPage({
                 <TableOfContents containerId="x-article-body" />
               </aside>
             )}
-            <div className="w-full max-w-[600px]">
+            <div className="w-full max-w-[720px]">
               {daysLeft !== null && daysLeft > 0 && (
                 <ShareAccessBanner daysLeft={daysLeft} createdBy={item.createdBy ?? 'admin'} />
               )}

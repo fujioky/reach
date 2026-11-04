@@ -14,6 +14,8 @@ import { FetcherError } from '@/lib/fetcher/errors';
 import { db, contentItems, media, comments, shares, refreshPreviews } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { prefetchMissingReplies } from '@/lib/mirror/x-thread-expand';
 import type { FetchedContent } from '@/lib/fetcher/types';
 import {
   accessControlSchema,
@@ -118,6 +120,7 @@ export async function createMirror(
   }
 
   const videoWarnings = await uploadMirrorVideos(created.mirrorId);
+  after(() => prefetchMissingReplies(created.mirrorId));
   return {
     ok: true,
     mirrorId: created.mirrorId,
@@ -227,6 +230,7 @@ export async function refreshMirror(
   if (result.error) {
     return { ok: false, error: result.error };
   }
+  after(() => prefetchMissingReplies(parsed.data));
 
   // 4. Revalidate the list + detail pages
   revalidatePath('/admin/mirrors');
@@ -444,6 +448,7 @@ export async function previewRefreshAction(
 
   const { previewRefresh } = await import('@/lib/mirror/refresh');
   const result = await previewRefresh(parsed.data);
+  after(() => prefetchMissingReplies(parsed.data));
 
   if (!result.ok) {
     return { ok: false, error: result.error };
@@ -484,6 +489,7 @@ export async function applyRefreshAction(
 
   const { applyRefresh } = await import('@/lib/mirror/refresh');
   const result = await applyRefresh(mirrorId, previewId, selectedCommentIds);
+  after(() => prefetchMissingReplies(mirrorId));
 
   if (!result.ok) {
     return { ok: false, error: result.error };

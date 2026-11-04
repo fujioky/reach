@@ -110,18 +110,16 @@ export function ThreadParents({
           </div>
         )}
         {parents.map((post) => (
-          <div key={post.id} className="relative py-4">
-            {/* Thread line down to the next tweet, as on X. */}
-            <span aria-hidden="true" className="absolute bottom-0 left-[17px] top-14 w-0.5 bg-border/70" />
-            <CommentBody node={post} />
-            <div className="ml-12 mt-1.5">
+          <div key={post.id} className="pt-4 last:pb-4">
+            {/* Thread line down to the next tweet (and the post below), as on X. */}
+            <CommentBody node={post} threadLine>
               <Link
                 href={`/s/${token}/x/${post.id}`}
-                className="text-[12px] text-muted transition-colors hover:text-brand"
+                className="mt-1.5 inline-block text-[12px] text-muted transition-colors hover:text-brand"
               >
                 打开这条帖子 →
               </Link>
-            </div>
+            </CommentBody>
           </div>
         ))}
       </div>

@@ -8,7 +8,6 @@
 // does not spend a view of the share.
 
 import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { eq } from 'drizzle-orm';
 import { db, contentItems } from '@/lib/db';
@@ -29,6 +28,7 @@ import { CommentListClient } from '../../_components/CommentListClient';
 import { proxyAvatar } from '../../_components/proxy-avatar';
 import { XImageGrid } from '../../_components/XImageGrid';
 import { ExpiredPage } from '../../_components/ExpiredPage';
+import { BackToMirror } from '../../_components/BackToMirror';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -121,13 +121,8 @@ function Frame({ token, mirrorTitle, children }: { token: string; mirrorTitle: s
     <div data-platform="x" className="relative min-h-screen bg-paper text-ink">
       <PageBackground intensity="subtle" />
       <ShareHeader platform="x" />
-      <div className="relative mx-auto max-w-[600px] px-4 pb-12 pt-6 md:pt-10">
-        <Link
-          href={`/s/${token}`}
-          className="mb-4 inline-flex max-w-full items-center gap-1.5 truncate text-[13px] text-muted transition-colors hover:text-ink"
-        >
-          ← 返回镜像：{mirrorTitle}
-        </Link>
+      <div className="relative mx-auto max-w-[720px] px-4 pb-12 pt-6 md:pt-10">
+        <BackToMirror token={token} title={mirrorTitle} />
         {children}
       </div>
     </div>
