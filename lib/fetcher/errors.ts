@@ -14,16 +14,16 @@
 import { AgentReachError, AgentReachItem } from '@/lib/fetcher/types';
 
 /**
- * Reach error kinds — maps to agent-reach error kinds + Reach-specific ones.
+ * Reach error kinds — maps to reach-upstream error kinds + Reach-specific ones.
  * Callers (Phase 3 admin UI) can `switch (error.kind)` to show appropriate UI
  * (retry button for rate-limited, "not found" for deleted content, etc.).
  */
 export enum ReachErrorKind {
-  // From agent-reach errors[].kind
+  // From reach-upstream errors[].kind
   RATE_LIMITED = 'rate_limited',
   NOT_FOUND = 'not_found',
   AUTH_REQUIRED = 'auth_required',
-  UNSUPPORTED = 'unsupported',         // platform not supported by agent-reach
+  UNSUPPORTED = 'unsupported',         // platform not supported by reach-upstream
   NOT_CONFIGURED = 'not_configured',   // backend not installed
   TIMEOUT = 'timeout',
   INTERNAL = 'internal',
@@ -44,7 +44,7 @@ export class FetcherError extends Error {
   constructor(
     public kind: ReachErrorKind,
     message: string,
-    public statusCode?: number,      // HTTP status from agent-reach
+    public statusCode?: number,      // HTTP status from reach-upstream
     public platform?: string,        // which platform was being fetched
     public sourceUrl?: string,       // the URL that was fetched
     public retryable?: boolean,      // can the caller retry? (429, timeout, network)
@@ -66,12 +66,12 @@ export function isRetryable(kind: ReachErrorKind): boolean {
 }
 
 /**
- * Map agent-reach HTTP status + errors[] array to a structured FetcherError.
+ * Map reach-upstream HTTP status + errors[] array to a structured FetcherError.
  * Checks errors[] first (more specific than HTTP status), then falls back to
  * HTTP status code mapping.
  *
- * @param status   HTTP status code from the agent-reach response
- * @param errors   agent-reach errors[] array (may be empty)
+ * @param status   HTTP status code from the reach-upstream response
+ * @param errors   reach-upstream errors[] array (may be empty)
  * @param platform which platform was being fetched (adapter.platform)
  * @param url      the source URL that was fetched
  */
@@ -87,7 +87,7 @@ export function mapAgentReachError(
     const kind = err.kind as ReachErrorKind;
     return new FetcherError(
       kind,
-      err.message || `agent-reach error: ${kind}`,
+      err.message || `reach-upstream error: ${kind}`,
       status,
       platform,
       url,
@@ -98,7 +98,7 @@ export function mapAgentReachError(
   // Fall back to HTTP status
   switch (status) {
     case 401:
-      return new FetcherError(ReachErrorKind.AUTH_REQUIRED, 'Invalid agent-reach password', 401, platform, url, false);
+      return new FetcherError(ReachErrorKind.AUTH_REQUIRED, 'Invalid reach-upstream password', 401, platform, url, false);
     case 429:
       return new FetcherError(ReachErrorKind.RATE_LIMITED, 'Rate limited by upstream platform', 429, platform, url, true);
     case 504:
@@ -106,7 +106,7 @@ export function mapAgentReachError(
     case 503:
       return new FetcherError(ReachErrorKind.NOT_CONFIGURED, 'Backend not configured', 503, platform, url, false);
     case 500:
-      return new FetcherError(ReachErrorKind.INTERNAL, 'Internal agent-reach error', 500, platform, url, false);
+      return new FetcherError(ReachErrorKind.INTERNAL, 'Internal reach-upstream error', 500, platform, url, false);
     default:
       return new FetcherError(ReachErrorKind.UNKNOWN, `Unexpected status ${status}`, status, platform, url, false);
   }
@@ -118,7 +118,7 @@ export function mapAgentReachError(
  * deleted/private/non-existent tweets, instead of a 404. The Fetcher MUST
  * check for this after a successful 200 response.
  *
- * @param item the agent-reach item (may be undefined/null if not present)
+ * @param item the reach-upstream item (may be undefined/null if not present)
  * @returns true if the item is effectively empty (deleted/private tweet)
  */
 export function detectEmptyItem(item: AgentReachItem | undefined | null): boolean {

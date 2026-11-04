@@ -1,11 +1,11 @@
 // lib/fetcher/client.ts
 // Core Fetcher client — fetchContent() + refreshVideoUrl().
-// FTCH-02 (agent-reach API call), FTCH-03 (normalization), FTCH-04 (structured errors).
+// FTCH-02 (reach-upstream API call), FTCH-03 (normalization), FTCH-04 (structured errors).
 // Plan 02-03, Task 2 — Research §4 (error handling) + §7 (API client details).
 //
 // Structured error handling:
 // - fetchWithRetry(): exponential backoff for 429 rate limits + transient network errors
-// - mapAgentReachError(): maps agent-reach errors[]/HTTP status → FetcherError
+// - mapAgentReachError(): maps reach-upstream errors[]/HTTP status → FetcherError
 // - detectEmptyItem(): Twitter 200+empty-item discrepancy → EMPTY_ITEM error kind
 
 import { AgentReachResponse, FetchedContent } from './types';
@@ -33,7 +33,7 @@ function sleep(ms: number): Promise<void> {
  * - On network failure (fetch throws): retry up to maxRetries, then throw NETWORK_ERROR.
  * - On any other status: return the response immediately (caller handles errors[]).
  *
- * @param url          agent-reach API URL to fetch
+ * @param url          reach-upstream API URL to fetch
  * @param maxRetries   max retry attempts (default 2 → 3 total tries)
  * @param baseDelayMs  base delay for exponential backoff (default 5000ms)
  */
@@ -74,14 +74,14 @@ async function fetchWithRetry(
 
 /**
  * Main Fetcher entry point — called by API routes, Phase 3 admin UI.
- * Given a post URL, identifies platform, calls agent-reach, returns unified FetchedContent.
+ * Given a post URL, identifies platform, calls reach-upstream, returns unified FetchedContent.
  * Throws FetcherError on failure (kind/retryable let callers branch appropriately).
  */
 export async function fetchContent(url: string): Promise<FetchedContent> {
   // 1. Identify platform from URL (FTCH-01) — throws FetcherError(UNSUPPORTED_PLATFORM)
   const adapter = identifyPlatform(url);
 
-  // 2. Call agent-reach HTTP API (FTCH-02) with retry for 429/network errors
+  // 2. Call reach-upstream HTTP API (FTCH-02) with retry for 429/network errors
   // DB settings take precedence; env vars and hardcoded defaults are the fallback.
   const [dbBase, dbPwd] = await Promise.all([
     getSetting('agent_reach_url'),
@@ -92,7 +92,7 @@ export async function fetchContent(url: string): Promise<FetchedContent> {
   if (!base) {
     throw new FetcherError(
       ReachErrorKind.NOT_CONFIGURED,
-      'Agent Reach base URL is not configured (set it in 系统设置 or AGENT_REACH_BASE_URL)',
+      'Fetching proxy base URL is not configured (set it in 系统设置 or AGENT_REACH_BASE_URL)',
       undefined, adapter.platform, url, false,
     );
   }
@@ -108,7 +108,7 @@ export async function fetchContent(url: string): Promise<FetchedContent> {
   } catch {
     throw new FetcherError(
       ReachErrorKind.PARSE_ERROR,
-      `Failed to parse agent-reach response (status ${status})`,
+      `Failed to parse reach-upstream response (status ${status})`,
       status, adapter.platform, url, false,
     );
   }
@@ -135,7 +135,7 @@ export async function fetchContent(url: string): Promise<FetchedContent> {
 
 /**
  * D-09: Re-fetch content to get fresh googlevideo URLs.
- * Same as fetchContent — agent-reach generates fresh URLs on each call.
+ * Same as fetchContent — reach-upstream generates fresh URLs on each call.
  * Phase 4/5 calls this when a stored video URL is expired (~6h).
  */
 export async function refreshVideoUrl(url: string): Promise<FetchedContent> {

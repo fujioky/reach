@@ -5,7 +5,7 @@
 //   0. 代理错误横幅
 //   1. 视频反代 — 卡片式选择：Vercel 函数（本站）或 外部代理
 //   2. 视频存储后端 — 卡片式选择：不使用 或 S3 兼容存储
-//   3. Agent Reach API
+//   3. Fetching proxy (reach-upstream)
 //
 // Health check: calls GET /api/settings-health with current values from the
 // inputs (not yet saved), so the admin can verify before saving.
@@ -767,8 +767,8 @@ export function SettingsForm({
         </div>
       </SectionCard>
 
-      {/* ── Agent Reach API ── */}
-      <SectionCard title="Agent Reach 接口" description="配置上游 Agent Reach 抓取服务的地址和密码。">
+      {/* ── Fetching proxy (reach-upstream) ── */}
+      <SectionCard title="抓取端接口" description="配置抓取端 reach-upstream 的地址和密码。">
         <div className="flex flex-col gap-4">
           <div>
             <label className="mb-1.5 block text-[12px] text-muted">接口地址</label>
@@ -781,7 +781,7 @@ export function SettingsForm({
                   setAgentUrl(e.target.value);
                   setAgentHealth({ state: 'idle' });
                 }}
-                placeholder="https://agent-reach.example.com"
+                placeholder="https://reach-upstream.example.com"
                 className="flex-1 rounded-md border border-border bg-paper px-3 py-2 text-[13px] text-ink outline-none transition-colors placeholder:text-subtle focus:border-brand focus:ring-1 focus:ring-brand/30"
               />
               <button

@@ -32,8 +32,8 @@ export const SITE_REPOS: SiteRepo[] = [
     url: 'https://github.com/fujioky/reach-upstream',
     role: '抓取端',
     description:
-      'Agent Reach 的分支，proxy/ 目录里是 Reach 依赖的 HTTP / MCP 代理：在上游之上补了 X / YouTube 的定制解析和公开访问接口。',
-    readmePath: 'proxy/README.zh-CN.md',
+      'Reach 的抓取端：HTTP / MCP 代理，抓取 X、YouTube、小红书、Telegram 与网页内容并整理成统一结构，也可直接接入 Claude、ChatGPT。',
+    readmePath: 'README.zh-CN.md',
   },
   {
     slug: 'reach-dlproxy',

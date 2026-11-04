@@ -15,7 +15,7 @@ Demo: **https://reach.fujioky.com**
 
 Reach is built from a few standalone repositories — see each repo for the full details:
 
-- **[reach-upstream](https://github.com/fujioky/reach-upstream)** — a modification of [Agent Reach](https://github.com/Panniantong/agent-reach) that wraps it in an HTTP / MCP API for direct use by AI such as Claude and ChatGPT (that side is also **specially optimised for Xiaohongshu (xhs)**: post images are inlined so the AI can read the whole post), and normalises fetched content for Reach. **General-purpose**, not tied to Reach — Reach itself only mirrors X / YouTube. **Reach requires it** — a stock agent-reach install will not work; see its [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md).
+- **[reach-upstream](https://github.com/fujioky/reach-upstream)** — Reach's fetching side: an HTTP / MCP proxy that fetches X, YouTube, Xiaohongshu, Telegram and web content into one normalised shape, and can be used directly by AI such as Claude and ChatGPT (**specially optimised for Xiaohongshu**: post images are inlined so the AI can read the whole post). **General-purpose**, not tied to Reach — Reach itself only mirrors X / YouTube. **Reach requires it**; see its [README](https://github.com/fujioky/reach-upstream/blob/main/README.md).
 - **[reach-dlproxy](https://github.com/fujioky/reach-dlproxy)** — a simple reverse-proxy server with access control and recursive resolution, used as Reach's video proxy / re-hosting channel. **General-purpose**.
 - **[reach-browser-extension](https://github.com/fujioky/reach-browser-extension)** — a browser extension that turns the X post or YouTube video you're viewing into a Reach share link in one click (Chrome / Edge / Firefox). **Quick sharing**.
 
@@ -34,7 +34,7 @@ Reach is built from a few standalone repositories — see each repo for the full
 
 **Mirrors** — paste a post URL, get a self-hosted copy.
 
-- Fetches X (Twitter) posts and YouTube videos through an upstream *Agent Reach* API, then normalises them into one content model: title, body, author, media, engagement stats, comments.
+- Fetches X (Twitter) posts and YouTube videos through the *reach-upstream* fetching proxy, then normalises them into one content model: title, body, author, media, engagement stats, comments.
 - Video is re-hosted: streamed through the app (`/api/proxy-video`), through an optional external reverse proxy (reference implementation: [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)), or uploaded to any S3-compatible bucket (Cloudflare R2, AWS S3, MinIO) and served from a CDN domain. Upstream streams are pulled in bounded chunks with automatic failover between hops.
 - Share links (`/s/<token>`) can expire by time, by view count, or burn after a single read. Each mirror keeps a version history with preview-before-apply refresh and rollback.
 - Subtitles: the best caption track is shown in-player; non-Chinese tracks are translated cue-by-cue via DeepL. Post text and comments get the same on-demand translation, cached in the database.
@@ -60,7 +60,7 @@ Reach is built from a few standalone repositories — see each repo for the full
 
 **Operations**
 
-- Public status page (`/status`) with latency sparklines, fed by a daily cron sample and an admin health panel that probes the video proxy, S3 bucket, Agent Reach and DeepL.
+- Public status page (`/status`) with latency sparklines, fed by a daily cron sample and an admin health panel that probes the video proxy, S3 bucket, fetching proxy and DeepL.
 - Cloudflare Turnstile gate for visitor pages, optional site-wide content password, PWA manifest and service worker, light/dark theme.
 
 ## Visit recording and session replay
@@ -138,7 +138,7 @@ Things to know:
 
 ## Getting started
 
-Prerequisites: Node.js 24, a PostgreSQL database, a Vercel Blob store, and an Agent Reach endpoint (see below).
+Prerequisites: Node.js 24, a PostgreSQL database, a Vercel Blob store, and a reach-upstream endpoint (see below).
 
 ```bash
 git clone https://github.com/fujioky/reach.git
@@ -160,8 +160,8 @@ Run the test suite with `npm test`.
 | `POSTGRES_URL` | yes | Postgres connection string (also used by `drizzle-kit`) |
 | `AUTH_SECRET` | yes | Auth.js secret (`openssl rand -base64 32`) |
 | `BLOB_READ_WRITE_TOKEN` | yes | Vercel Blob token for images and avatars |
-| `AGENT_REACH_BASE_URL` | yes* | Upstream Agent Reach base URL |
-| `AGENT_REACH_PWD` | yes* | Upstream Agent Reach password |
+| `AGENT_REACH_BASE_URL` | yes* | reach-upstream base URL |
+| `AGENT_REACH_PWD` | yes* | reach-upstream password |
 | `NEXT_PUBLIC_SITE_URL` | no | Canonical origin for share links, OpenGraph and the analytics origin check; defaults to the Vercel production URL |
 | `CRON_SECRET` | no | Protects `/api/cron/*`; Vercel sends it automatically for scheduled jobs |
 | `AI_PARSER_API_KEY` | no | Key for the optional LLM media resolver |
@@ -169,9 +169,9 @@ Run the test suite with `npm test`.
 
 \* Can be set in the admin settings instead; environment values take precedence.
 
-### Agent Reach
+### Fetching proxy
 
-Reach does not scrape platforms itself. It calls an HTTP service that wraps the [Agent Reach](https://github.com/Panniantong/agent-reach) toolchain. A stock upstream install is **not** enough: upstream is a local capability layer for AI agents with no wrapping API. Deploy the proxy from **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)** (`proxy/`, see its [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.md)) instead. It adds the custom X/Twitter and YouTube parsing Reach depends on — one normalised item, every progressive YouTube video source, subtitles as timed VTT, threaded comments, structured error kinds — and exposes the toolchain publicly through this endpoint and an MCP server with OAuth (usable from ChatGPT / Claude connectors):
+Reach does not scrape platforms itself. It calls its fetching proxy, **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)** (see its [README](https://github.com/fujioky/reach-upstream/blob/main/README.md) to deploy it). The proxy does the X/Twitter and YouTube parsing Reach depends on — one normalised item, every progressive YouTube video source, subtitles as timed VTT, threaded comments with their images, X Article inline images, structured error kinds — and serves it through this endpoint and an MCP server with OAuth (usable from ChatGPT / Claude connectors):
 
 ```
 GET {base}/healthz                                   → { "ok": true, ... }
@@ -204,7 +204,7 @@ app/
   p/[slug]/, post/    article page and archive
   status/             public status page
 lib/
-  fetcher/            Agent Reach client + platform adapters (X, YouTube), post URL parsing
+  fetcher/            Fetching-proxy client + platform adapters (X, YouTube), post URL parsing
   mirror/             mirror creation (shared by the wizard and the extension), quick share, refresh, versions
   video/              chunked upstream fetch, proxy failover, playback URL resolution
   storage/, blob/     S3 multipart + presign, Vercel Blob helpers

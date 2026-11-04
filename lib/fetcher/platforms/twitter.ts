@@ -12,7 +12,7 @@ import {
 
 /**
  * Detects whether a URL is a Twitter/X media URL (image/video) rather than
- * a post URL. agent-reach sometimes returns media URLs as item.url.
+ * a post URL. reach-upstream sometimes returns media URLs as item.url.
  */
 function isMediaUrl(url: string): boolean {
   return /twimg\.com|t\.co\/[A-Za-z0-9]+$|video\.twimg/i.test(url);
@@ -46,7 +46,7 @@ export const twitterAdapter: PlatformAdapter = {
     return { sourceId: id, url: `https://x.com/${handle}/status/${id}` };
   },
   normalize(item, fetchedAt) {
-    // Guard: agent-reach sometimes returns a media URL as item.url instead of
+    // Guard: reach-upstream sometimes returns a media URL as item.url instead of
     // the post URL. Detect this and reconstruct the canonical post URL from
     // the author handle + tweet ID so refreshMirror can re-fetch correctly.
     const postUrl = isMediaUrl(item.url)

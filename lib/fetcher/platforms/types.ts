@@ -7,7 +7,7 @@ import { AgentReachItem, FetchedContent } from '@/lib/fetcher/types';
 
 /** Platform adapter — one per supported platform */
 export interface PlatformAdapter {
-  /** agent-reach platform parameter value */
+  /** reach-upstream platform parameter value */
   platform: string;  // 'x', 'youtube', 'xhs', 'web'
 
   /** Human-readable platform name */
@@ -27,6 +27,6 @@ export interface PlatformAdapter {
    */
   parsePostUrl(url: URL): { sourceId: string; url: string } | null;
 
-  /** Normalize agent-reach item response → FetchedContent */
+  /** Normalize reach-upstream item response → FetchedContent */
   normalize(item: AgentReachItem, fetchedAt: string): FetchedContent;
 }

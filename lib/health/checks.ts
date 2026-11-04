@@ -380,17 +380,17 @@ export async function collectSystemHealth(
   if (!agentUrl) {
     services.push({
       id: 'agent_reach',
-      name: 'Agent Reach 接口',
+      name: '抓取端接口',
       configured: false,
       configLabel: '未配置',
       state: 'skipped',
-      message: '未设置 Agent Reach 接口地址',
+      message: '未设置抓取端接口地址',
     });
   } else {
     const agentProbe = await probeAgentReach(agentUrl);
     services.push({
       id: 'agent_reach',
-      name: 'Agent Reach 接口',
+      name: '抓取端接口',
       configured: true,
       configLabel: hostLabel(agentUrl),
       state: agentProbe.ok ? 'ok' : 'error',

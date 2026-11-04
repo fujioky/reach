@@ -1,6 +1,6 @@
 // app/admin/(shell)/settings/page.tsx
 // Admin settings page — configures video proxy, video storage backend, and
-// Agent Reach API.
+// fetching proxy (reach-upstream).
 //
 // RSC: loads current settings from DB and passes them to the client form.
 

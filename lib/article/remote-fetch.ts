@@ -2,7 +2,7 @@
 // Safety layer for importing media from an arbitrary remote URL.
 //
 // Every other server-side fetch in this codebase aims at a URL the app itself
-// produced (agent-reach results) or at a platform whitelist (mirror creation).
+// produced (reach-upstream results) or at a platform whitelist (mirror creation).
 // Remote import is different by design: the whole point is that the admin can
 // paste any image or video URL. That makes this the one place where a
 // user-supplied host reaches the server's network stack, so it needs real SSRF

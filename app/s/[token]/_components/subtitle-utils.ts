@@ -8,7 +8,7 @@ export interface VttCue {
   text: string;
 }
 
-/** 解码 agent-reach 字幕文本里的 HTML 实体（&#39; &amp; 等）。 */
+/** 解码 reach-upstream 字幕文本里的 HTML 实体（&#39; &amp; 等）。 */
 export function decodeEntities(text: string): string {
   return text
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))

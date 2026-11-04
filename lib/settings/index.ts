@@ -8,9 +8,9 @@
 //
 // Known keys:
 //   video_proxy_url           — base URL for the video reverse proxy (default: '' → use Vercel /api/proxy-video directly)
-//   agent_reach_url           — base URL for the upstream Agent Reach API ('' = not configured;
+//   agent_reach_url           — base URL for the reach-upstream API ('' = not configured;
 //                                AGENT_REACH_BASE_URL env overrides)
-//   agent_reach_pwd           — password for the Agent Reach API (AGENT_REACH_PWD env overrides)
+//   agent_reach_pwd           — password for the reach-upstream API (AGENT_REACH_PWD env overrides)
 //   proxy_last_error          — last upstream error seen by proxy-video (e.g. "403 googlevideo")
 //   proxy_error_at            — ISO timestamp of the last proxy error ('' = no error recorded)
 //   video_storage_enabled     — "true" | "false" — whether to use a backing S3-compatible store for videos

@@ -45,7 +45,7 @@ export function selectProgressiveSource(
 }
 
 /**
- * Convert all agent-reach video_sources to VideoSource[] (preserving DASH sources for D-09).
+ * Convert all reach-upstream video_sources to VideoSource[] (preserving DASH sources for D-09).
  * Marks isProgressive = hasVideo && hasAudio for each source.
  */
 export function normalizeVideoSources(

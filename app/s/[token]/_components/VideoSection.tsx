@@ -67,7 +67,7 @@ export async function VideoSection({
     }
   }
 
-  // In-player captions: timed VTT saved by agent-reach (may be absent for
+  // In-player captions: timed VTT saved by reach-upstream (may be absent for
   // mirrors fetched before subtitle support — 刷新字幕 backfills it).
   const platformData = itemRows[0]?.platformData as
     | { transcriptVtt?: string; transcriptLang?: string }

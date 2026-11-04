@@ -15,7 +15,7 @@
 
 Reach 由几个独立仓库协作，各仓库自身的说明更完整：
 
-- **[reach-upstream](https://github.com/fujioky/reach-upstream)** — 对 [Agent Reach](https://github.com/Panniantong/agent-reach) 的改造，包装出 HTTP / MCP 接口，可直接给 Claude、ChatGPT 等 AI 使用（这一侧还**特别针对小红书（xhs）优化**：把帖子图片内嵌返回，让 AI 能完整读完整篇帖子）；同时为 Reach 规范化信息结构。**可以通用**，不止服务 Reach——Reach 自身只镜像 X / YouTube。**Reach 必须先部署它**——直接装原版 agent-reach 用不了，部署步骤见其 [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)。
+- **[reach-upstream](https://github.com/fujioky/reach-upstream)** — Reach 的抓取端：一个 HTTP / MCP 代理，抓取 X、YouTube、小红书、Telegram 与网页内容并整理成统一结构，也能直接接入 Claude、ChatGPT 等 AI（小红书**特别优化**：帖子图片内嵌返回，让 AI 能读完整篇帖子）。**可以通用**，不止服务 Reach——Reach 自身只镜像 X / YouTube。**Reach 必须先部署它**，步骤见其 [README](https://github.com/fujioky/reach-upstream/blob/main/README.zh-CN.md)。
 - **[reach-dlproxy](https://github.com/fujioky/reach-dlproxy)** — 一个支持访问控制与递归解析的简单反向代理服务器，用作 Reach 的视频转发 / 转存通道。**可以通用**。
 - **[reach-browser-extension](https://github.com/fujioky/reach-browser-extension)** — 浏览器扩展，在你正浏览的 X 帖子或 YouTube 视频页一键生成 Reach 分享链接（Chrome / Edge / Firefox）。**支持快捷共享**。
 
@@ -34,7 +34,7 @@ Reach 由几个独立仓库协作，各仓库自身的说明更完整：
 
 **镜像** —— 贴上帖子链接，得到一份自托管副本。
 
-- 通过上游 *Agent Reach* 接口抓取 X（Twitter）帖子与 YouTube 视频，统一归一化为同一套内容模型：标题、正文、作者、媒体、互动数据、评论。
+- 通过抓取端 *reach-upstream* 抓取 X（Twitter）帖子与 YouTube 视频，统一归一化为同一套内容模型：标题、正文、作者、媒体、互动数据、评论。
 - 视频重新托管：可经本站转发（`/api/proxy-video`）、经外部反向代理转发（参考实现 [fujioky/reach-dlproxy](https://github.com/fujioky/reach-dlproxy)），或上传到任意 S3 兼容存储桶（Cloudflare R2、AWS S3、MinIO）并从自定义域名分发。上游取流按有界分块进行，各通道之间自动故障转移。
 - 分享链接（`/s/<token>`）支持限期、限次、阅后即焚。每条镜像保留版本历史，刷新前可预览差异，随时回滚。
 - 字幕：播放器内直接显示最佳字幕轨，非中文字幕逐条经 DeepL 翻译；正文与评论同样按需翻译，结果缓存在数据库。
@@ -60,7 +60,7 @@ Reach 由几个独立仓库协作，各仓库自身的说明更完整：
 
 **运维**
 
-- 公开状态页（`/status`）带延迟迷你图，数据来自每日 cron 采样；后台健康面板探测视频代理、S3 存储桶、Agent Reach 与 DeepL。
+- 公开状态页（`/status`）带延迟迷你图，数据来自每日 cron 采样；后台健康面板探测视频代理、S3 存储桶、抓取端与 DeepL。
 - 访客页 Cloudflare Turnstile 人机验证门、可选的全站内容密码、PWA manifest 与 Service Worker、亮 / 暗色主题。
 
 ## 访问记录与会话回放
@@ -138,7 +138,7 @@ Reach 由几个独立仓库协作，各仓库自身的说明更完整：
 
 ## 本地运行
 
-前置条件：Node.js 24、一个 PostgreSQL 数据库、一个 Vercel Blob 存储、一个 Agent Reach 接口（见下文）。
+前置条件：Node.js 24、一个 PostgreSQL 数据库、一个 Vercel Blob 存储、一个抓取端接口（见下文）。
 
 ```bash
 git clone https://github.com/fujioky/reach.git
@@ -160,8 +160,8 @@ npm run dev
 | `POSTGRES_URL` | 是 | Postgres 连接串（`drizzle-kit` 也用它） |
 | `AUTH_SECRET` | 是 | Auth.js 密钥（`openssl rand -base64 32`） |
 | `BLOB_READ_WRITE_TOKEN` | 是 | Vercel Blob 令牌，存图片与头像 |
-| `AGENT_REACH_BASE_URL` | 是* | 上游 Agent Reach 接口地址 |
-| `AGENT_REACH_PWD` | 是* | 上游 Agent Reach 口令 |
+| `AGENT_REACH_BASE_URL` | 是* | 抓取端（reach-upstream）地址 |
+| `AGENT_REACH_PWD` | 是* | 抓取端口令 |
 | `NEXT_PUBLIC_SITE_URL` | 否 | 站点规范源：分享链接、OpenGraph、分析上报来源校验；缺省取 Vercel 生产域名 |
 | `CRON_SECRET` | 否 | 保护 `/api/cron/*`；Vercel 定时任务会自动带上 |
 | `AI_PARSER_API_KEY` | 否 | 可选 LLM 媒体解析器的密钥 |
@@ -169,9 +169,9 @@ npm run dev
 
 \* 也可以在后台设置中填写；环境变量优先级更高。
 
-### Agent Reach
+### 抓取端
 
-Reach 自身不抓取平台内容，而是调用一个封装了 [Agent Reach](https://github.com/Panniantong/agent-reach) 工具链的 HTTP 服务。直接部署上游是**不够**的：上游是给 AI Agent 用的本地能力层，没有任何包装 API。请部署 **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)** 里的代理（`proxy/`，见其 [README](https://github.com/fujioky/reach-upstream/blob/main/proxy/README.zh-CN.md)）。它加入了 Reach 依赖的 X/Twitter 与 YouTube 定制解析——统一内容结构、全部渐进式 YouTube 视频源、带时间轴的 VTT 字幕、回复串、结构化错误类型——并把工具链通过下面这个接口和一个带 OAuth 的 MCP 服务（可接入 ChatGPT / Claude 连接器）公开出去：
+Reach 自身不抓取平台内容，而是调用抓取端 **[fujioky/reach-upstream](https://github.com/fujioky/reach-upstream)**（部署见其 [README](https://github.com/fujioky/reach-upstream/blob/main/README.zh-CN.md)）。它负责 Reach 依赖的 X/Twitter 与 YouTube 定制解析——统一内容结构、全部渐进式 YouTube 视频源、带时间轴的 VTT 字幕、回复串与回复图片、X 长文内嵌图片、结构化错误类型——并通过下面这个接口和一个带 OAuth 的 MCP 服务（可接入 ChatGPT / Claude 连接器）提供出去：
 
 ```
 GET {base}/healthz                                   → { "ok": true, ... }
@@ -204,7 +204,7 @@ app/
   p/[slug]/, post/    文章页与归档页
   status/             公开状态页
 lib/
-  fetcher/            Agent Reach 客户端与平台适配器（X、YouTube），帖子链接解析
+  fetcher/            抓取端客户端与平台适配器（X、YouTube），帖子链接解析
   mirror/             镜像创建（后台向导与扩展共用）、快捷分享、刷新与版本
   video/              分块上游取流、代理故障转移、播放地址解析
   storage/, blob/     S3 multipart 与预签名、Vercel Blob 辅助
