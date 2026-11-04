@@ -68,7 +68,21 @@ async function readCached(item: ContentItemRow, tweetId: string): Promise<XPostC
     .from(xPostCache)
     .where(and(eq(xPostCache.contentItemId, item.id), eq(xPostCache.tweetId, tweetId)))
     .limit(1);
-  return (row?.payload as XPostCachePayload | undefined) ?? null;
+  const payload = (row?.payload as XPostCachePayload | undefined) ?? null;
+  // Stored before videos were kept: build it again rather than show a post
+  // whose video is missing.
+  return payload && payload.post.videos !== undefined ? payload : null;
+}
+
+/** Store (or replace an outdated copy of) an opened post. */
+async function saveCached(item: ContentItemRow, tweetId: string, payload: XPostCachePayload): Promise<void> {
+  await db
+    .insert(xPostCache)
+    .values({ contentItemId: item.id, tweetId, payload })
+    .onConflictDoUpdate({
+      target: [xPostCache.contentItemId, xPostCache.tweetId],
+      set: { payload, fetchedAt: new Date() },
+    });
 }
 
 function toStored(record: CommentRecord, images: StoredPost['images']): StoredPost {
@@ -149,7 +163,7 @@ export async function openPost(item: ContentItemRow, tweetId: string): Promise<O
 
   const mirrored = await fromMirror(tweetId);
   if (mirrored) {
-    await db.insert(xPostCache).values({ contentItemId: item.id, tweetId, payload: mirrored }).onConflictDoNothing();
+    await saveCached(item, tweetId, mirrored);
     return { ok: true, payload: mirrored };
   }
 
@@ -179,6 +193,6 @@ export async function openPost(item: ContentItemRow, tweetId: string): Promise<O
     })),
   };
 
-  await db.insert(xPostCache).values({ contentItemId: item.id, tweetId, payload }).onConflictDoNothing();
-  return { ok: true, payload: (await readCached(item, tweetId)) ?? payload };
+  await saveCached(item, tweetId, payload);
+  return { ok: true, payload };
 }

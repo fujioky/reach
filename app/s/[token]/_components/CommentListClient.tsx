@@ -17,6 +17,7 @@ import type { ThreadNode } from '@/lib/mirror/thread-view';
 import { TranslatedBody } from './TranslatedBody';
 import { XImageGrid } from './XImageGrid';
 import { proxyAvatar } from './proxy-avatar';
+import { VideoPlayer } from './VideoPlayer';
 
 export type CommentData = ThreadNode;
 
@@ -240,20 +241,15 @@ export function CommentBody({
   );
 }
 
-/** Videos of a thread post, played through the share's video route. */
+/** Videos of a thread post, in the mirror's player, through the share's video route. */
 export function ThreadVideos({ srcs, className = '' }: { srcs: string[]; className?: string }) {
   if (srcs.length === 0) return null;
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {srcs.map((src) => (
-        <video
-          key={src}
-          src={src}
-          controls
-          playsInline
-          preload="metadata"
-          className="max-h-[480px] w-full rounded-xl bg-black ring-1 ring-border/50"
-        />
+        <div key={src} className="overflow-hidden rounded-xl ring-1 ring-border/50">
+          <VideoPlayer src={src} platform="x" />
+        </div>
       ))}
     </div>
   );
