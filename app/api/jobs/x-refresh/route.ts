@@ -4,13 +4,13 @@
 // AUTH_SECRET, and a step whose `seq` is stale does nothing.
 
 export const runtime = 'nodejs';
-// A step refreshes one mirror (up to a minute or so) and then, in after(),
-// waits up to a minute before calling the next one.
+// The response goes out at once; after() then refreshes one mirror (up to a
+// minute or so) and waits up to a minute before calling the next step.
 export const maxDuration = 300;
 
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { runStep, verifyStepToken } from '@/lib/mirror/refresh-job';
+import { callStep, runStep, verifyStepToken } from '@/lib/mirror/refresh-job';
 
 const bodySchema = z.object({ jobId: z.string().uuid(), seq: z.number().int().nonnegative() });
 
@@ -20,6 +20,13 @@ export async function POST(req: NextRequest) {
   const token = (req.headers.get('authorization') ?? '').replace(/^Bearer /, '');
   if (!verifyStepToken(parsed.data.jobId, token)) return NextResponse.json({ ok: false }, { status: 401 });
 
-  await runStep(new URL(req.url).origin, parsed.data.jobId, parsed.data.seq);
-  return NextResponse.json({ ok: true });
+  // Answer now and work after: the caller must not wait for this step's
+  // refresh, or every step's run time would include the next one's.
+  const origin = new URL(req.url).origin;
+  const { jobId, seq } = parsed.data;
+  after(async () => {
+    const next = await runStep(jobId, seq);
+    if (next) await callStep(origin, next.state, next.delayMs);
+  });
+  return NextResponse.json({ ok: true }, { status: 202 });
 }

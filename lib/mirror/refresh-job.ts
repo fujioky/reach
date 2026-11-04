@@ -11,15 +11,16 @@
 // the same mirror again.
 //
 // It runs on the server, so closing the admin page does not stop it. Each
-// step is its own request to /api/jobs/x-refresh: it refreshes one
-// mirror, saves the progress, then (in after()) waits and calls the next
-// step, so no single request comes near the function timeout. Steps are
+// step is its own request to /api/jobs/x-refresh, which answers at once and
+// does the work in after(): refresh one mirror, save the progress, wait, then
+// call the next step. Answering first matters: a step that waited for the
+// next one's response would add that whole refresh to its own run time, and
+// the chain grew until a function hit its timeout and the chain broke. Steps are
 // authorised with an HMAC of the job id under AUTH_SECRET, and the state row
 // is updated compare-and-set on `seq`, so a stray or duplicated step call
 // cannot run a second chain alongside the first.
 
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { after } from 'next/server';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db, appSettings, contentItems } from '@/lib/db';
 import { isNotArticle } from '@/lib/article/queries';
@@ -80,8 +81,8 @@ export function verifyStepToken(jobId: string, token: string): boolean {
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
-/** Wait, then ask the next step to run (as its own request). */
-async function callStep(origin: string, state: RefreshJobState, delayMs: number): Promise<void> {
+/** Wait, then ask the next step to run (as its own request; it answers immediately). */
+export async function callStep(origin: string, state: RefreshJobState, delayMs: number): Promise<void> {
   if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
   await fetch(`${origin}/api/jobs/x-refresh`, {
     method: 'POST',
@@ -90,10 +91,8 @@ async function callStep(origin: string, state: RefreshJobState, delayMs: number)
   }).catch((err) => console.error('[refresh-job] could not call the next step', err));
 }
 
-/** After the current response: wait, then call the next step. */
-function scheduleStep(origin: string, state: RefreshJobState, delayMs: number): void {
-  after(() => callStep(origin, state, delayMs));
-}
+/** The step to call next and how long to wait first, or null when the chain ends here. */
+export type NextStep = { state: RefreshJobState; delayMs: number } | null;
 
 /**
  * A step overdue by this much means the chain broke (a step request lost to a
@@ -147,31 +146,30 @@ async function startJob(): Promise<RefreshJobState> {
 
 const RATE_LIMIT_RE = /rate.?limit|429|too many requests|限流/i;
 
-/** One step: refresh the next mirror (or keep waiting), save, schedule the next step. */
-export async function runStep(origin: string, jobId: string, seq: number): Promise<void> {
+/** One step: refresh the next mirror (or keep waiting) and save; returns the step to call next. */
+export async function runStep(jobId: string, seq: number): Promise<NextStep> {
   const current = await load();
-  if (!current) return;
+  if (!current) return null;
   const { state, raw } = current;
-  if (state.id !== jobId || state.seq !== seq || state.status !== 'running') return;
+  if (state.id !== jobId || state.seq !== seq || state.status !== 'running') return null;
 
   const wait = state.nextAt - Date.now();
   if (wait > 0) {
     // Still pausing (between mirrors, or after a rate limit): hand over to a
     // fresh request rather than sleeping past the function timeout.
     const claimed = { ...state, seq: seq + 1 };
-    if (await compareAndSet(raw, claimed)) scheduleStep(origin, claimed, Math.min(wait, MAX_WAIT_MS));
-    return;
+    return (await compareAndSet(raw, claimed)) ? { state: claimed, delayMs: Math.min(wait, MAX_WAIT_MS) } : null;
   }
 
   const id = state.ids[state.index];
   if (!id) {
     await compareAndSet(raw, { ...state, status: 'done', seq: seq + 1, finishedAt: Date.now() });
-    return;
+    return null;
   }
 
   // Claim the step before the slow refresh so a duplicate call cannot also run it.
   const claimed = { ...state, seq: seq + 1 };
-  if (!(await compareAndSet(raw, claimed))) return;
+  if (!(await compareAndSet(raw, claimed))) return null;
   const claimedRaw = JSON.stringify(claimed);
 
   const result = await refreshMirror(id).catch((err: Error) => ({ changed: false, error: err.message }));
@@ -187,5 +185,5 @@ export async function runStep(origin: string, jobId: string, seq: number): Promi
           nextAt: now + GAP_MS,
           rateLimitedUntil: undefined,
         };
-  if (await compareAndSet(claimedRaw, next)) scheduleStep(origin, next, Math.min(next.nextAt - now, MAX_WAIT_MS));
+  return (await compareAndSet(claimedRaw, next)) ? { state: next, delayMs: Math.min(next.nextAt - now, MAX_WAIT_MS) } : null;
 }
