@@ -1,37 +1,29 @@
 // lib/mirror/refresh-job.ts
-// Refreshing every X mirror in the background, slowly — a one-off job that
-// starts by itself (ensureJob, from the admin layout and the daily cron) so
-// older mirrors pick up what newer fetching stores, and is never re-run once
-// it has finished.
+// Refreshing every X mirror in the background, slowly — a one-off job so older
+// mirrors pick up what newer fetching stores. It is never re-run once it has
+// finished.
 //
 // Every refresh fetches through reach-upstream with one X account, so a burst
 // of them gets that account rate-limited by X — the reader's own x.com tab
-// included. The job therefore refreshes one mirror at a time, waits GAP_MS
-// between them, and on a rate limit pauses RATE_LIMIT_PAUSE_MS before trying
-// the same mirror again.
+// included. The job therefore refreshes one mirror per tick, and on a rate
+// limit pauses RATE_LIMIT_PAUSE_MS before trying the same mirror again.
 //
-// It runs on the server, so closing the admin page does not stop it. Each
-// step is its own request to /api/jobs/x-refresh, which answers at once and
-// does the work in after(): refresh one mirror, save the progress, wait, then
-// call the next step. Answering first matters: a step that waited for the
-// next one's response would add that whole refresh to its own run time, and
-// the chain grew until a function hit its timeout and the chain broke. Steps are
-// authorised with an HMAC of the job id under AUTH_SECRET, and the state row
-// is updated compare-and-set on `seq`, so a stray or duplicated step call
-// cannot run a second chain alongside the first.
+// Ticks come from outside: a timer on the operator's machine calls
+// /api/jobs/x-refresh every few minutes, and that interval is the pace. The
+// job used to drive itself on Vercel, each step requesting the next, but the
+// platform dropped that self-call after four hops every time, so the chain
+// kept stalling until someone happened to open a page. The state row is
+// updated compare-and-set on `seq`, so overlapping ticks refresh one mirror,
+// not two.
 
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db, appSettings, contentItems } from '@/lib/db';
 import { isNotArticle } from '@/lib/article/queries';
 import { refreshMirror } from '@/lib/mirror/refresh';
 
 const STATE_KEY = 'x_refresh_job';
-/** One mirror every 5 minutes: 79 take about 6.5 hours, well inside a day, and the X account barely notices. */
-export const GAP_MS = 5 * 60_000;
 export const RATE_LIMIT_PAUSE_MS = 30 * 60_000;
-/** Longest a step waits before handing over to the next request. */
-const MAX_WAIT_MS = 60_000;
 
 export interface RefreshJobState {
   id: string;
@@ -39,14 +31,20 @@ export interface RefreshJobState {
   ids: string[];
   index: number;
   failed: Array<{ id: string; error: string }>;
-  /** Incremented by every step; a step only runs if it holds the current value. */
+  /** Incremented by every tick that claims work; a tick only writes if it holds the current value. */
   seq: number;
-  /** Epoch ms before which the next refresh must not start. */
+  /** Epoch ms before which no refresh starts (set while paused on an X rate limit). */
   nextAt: number;
   startedAt: number;
   finishedAt?: number;
-  /** Set while paused on an X rate limit. */
   rateLimitedUntil?: number;
+}
+
+export interface TickResult {
+  status: 'running' | 'done' | 'waiting' | 'busy';
+  index: number;
+  total: number;
+  failed: number;
 }
 
 async function load(): Promise<{ state: RefreshJobState; raw: string } | null> {
@@ -69,59 +67,8 @@ async function compareAndSet(expectedRaw: string, next: RefreshJobState): Promis
   return updated.length === 1;
 }
 
-function stepToken(jobId: string): string {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error('AUTH_SECRET is required for the refresh job');
-  return createHmac('sha256', secret).update(`x-refresh-job:${jobId}`).digest('hex');
-}
-
-export function verifyStepToken(jobId: string, token: string): boolean {
-  const expected = Buffer.from(stepToken(jobId));
-  const given = Buffer.from(token);
-  return expected.length === given.length && timingSafeEqual(expected, given);
-}
-
-/** Wait, then ask the next step to run (as its own request; it answers immediately). */
-export async function callStep(origin: string, state: RefreshJobState, delayMs: number): Promise<void> {
-  if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
-  await fetch(`${origin}/api/jobs/x-refresh`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${stepToken(state.id)}` },
-    body: JSON.stringify({ jobId: state.id, seq: state.seq }),
-  }).catch((err) => console.error('[refresh-job] could not call the next step', err));
-}
-
-/** The step to call next and how long to wait first, or null when the chain ends here. */
-export type NextStep = { state: RefreshJobState; delayMs: number } | null;
-
-/**
- * A step overdue by this much means the chain broke (a step request lost to a
- * deploy or an outage); ensureJob then picks it up again.
- */
-const RESUME_GRACE_MS = 3 * 60_000;
-
-/**
- * Make sure the one-off job runs: start it if it never has, or restart its
- * step chain if a step is overdue. Called in the background (after()) from
- * admin pages, visitor pages and the daily cron, so ordinary traffic keeps
- * the job going even when a step request is lost; the `seq` check means
- * several callers at once still run one chain. Awaits the step call.
- */
-export async function ensureJob(origin: string): Promise<void> {
-  const current = await load();
-  if (!current) {
-    await callStep(origin, await startJob(), 0);
-    return;
-  }
-  const { state, raw } = current;
-  if (state.status !== 'running' || Date.now() < state.nextAt + RESUME_GRACE_MS) return;
-  const resumed = { ...state, seq: state.seq + 1, nextAt: Date.now() };
-  if (await compareAndSet(raw, resumed)) await callStep(origin, resumed, 0);
-}
-
 /** Create the job over every X mirror, least recently refreshed first. */
-async function startJob(): Promise<RefreshJobState> {
-
+async function startJob(): Promise<void> {
   const rows = await db
     .select({ id: contentItems.id })
     .from(contentItems)
@@ -141,36 +88,33 @@ async function startJob(): Promise<RefreshJobState> {
     .insert(appSettings)
     .values({ key: STATE_KEY, value: JSON.stringify(state), updatedAt: new Date() })
     .onConflictDoNothing();
-  return (await load())!.state;
 }
 
 const RATE_LIMIT_RE = /rate.?limit|429|too many requests|限流/i;
 
-/** One step: refresh the next mirror (or keep waiting) and save; returns the step to call next. */
-export async function runStep(jobId: string, seq: number): Promise<NextStep> {
-  const current = await load();
-  if (!current) return null;
-  const { state, raw } = current;
-  if (state.id !== jobId || state.seq !== seq || state.status !== 'running') return null;
+function summary(state: RefreshJobState, status: TickResult['status']): TickResult {
+  return { status, index: state.index, total: state.ids.length, failed: state.failed.length };
+}
 
-  const wait = state.nextAt - Date.now();
-  if (wait > 0) {
-    // Still pausing (between mirrors, or after a rate limit): hand over to a
-    // fresh request rather than sleeping past the function timeout.
-    const claimed = { ...state, seq: seq + 1 };
-    return (await compareAndSet(raw, claimed)) ? { state: claimed, delayMs: Math.min(wait, MAX_WAIT_MS) } : null;
-  }
+/** One tick: start the job if it never ran, then refresh the next mirror unless paused. */
+export async function tick(): Promise<TickResult> {
+  if (!(await load())) await startJob();
+  const current = await load();
+  if (!current) throw new Error('refresh job state is unreadable');
+  const { state, raw } = current;
+  if (state.status !== 'running') return summary(state, 'done');
+  if (Date.now() < state.nextAt) return summary(state, 'waiting');
 
   const id = state.ids[state.index];
   if (!id) {
-    await compareAndSet(raw, { ...state, status: 'done', seq: seq + 1, finishedAt: Date.now() });
-    return null;
+    const done = { ...state, status: 'done' as const, seq: state.seq + 1, finishedAt: Date.now() };
+    await compareAndSet(raw, done);
+    return summary(done, 'done');
   }
 
-  // Claim the step before the slow refresh so a duplicate call cannot also run it.
-  const claimed = { ...state, seq: seq + 1 };
-  if (!(await compareAndSet(raw, claimed))) return null;
-  const claimedRaw = JSON.stringify(claimed);
+  // Claim before the slow refresh so an overlapping tick cannot also run it.
+  const claimed = { ...state, seq: state.seq + 1 };
+  if (!(await compareAndSet(raw, claimed))) return summary(state, 'busy');
 
   const result = await refreshMirror(id).catch((err: Error) => ({ changed: false, error: err.message }));
   const error = 'error' in result ? result.error : undefined;
@@ -182,8 +126,9 @@ export async function runStep(jobId: string, seq: number): Promise<NextStep> {
           ...claimed,
           index: claimed.index + 1,
           failed: error ? [...claimed.failed, { id, error: error.slice(0, 300) }] : claimed.failed,
-          nextAt: now + GAP_MS,
+          nextAt: now,
           rateLimitedUntil: undefined,
         };
-  return (await compareAndSet(claimedRaw, next)) ? { state: next, delayMs: Math.min(next.nextAt - now, MAX_WAIT_MS) } : null;
+  await compareAndSet(JSON.stringify(claimed), next);
+  return summary(next, next.status);
 }

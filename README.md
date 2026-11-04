@@ -163,6 +163,7 @@ npm run dev                         # 启动前自动把数据库迁移到最新
 | `AGENT_REACH_PWD` | 是* | 抓取端口令 |
 | `NEXT_PUBLIC_SITE_URL` | 否 | 站点规范源：分享链接、OpenGraph、分析上报来源校验；缺省取 Vercel 生产域名 |
 | `CRON_SECRET` | 否 | 保护 `/api/cron/*`；Vercel 定时任务会自动带上 |
+| `REFRESH_JOB_TOKEN` | 否 | 启用 `POST /api/jobs/x-refresh`（Bearer 鉴权）：外部定时器每调用一次，后台刷新一条旧的 X 镜像；不设则该接口关闭 |
 | `AI_PARSER_API_KEY` | 否 | 可选 LLM 媒体解析器的密钥 |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | 否 | 开启访客页的 Cloudflare Turnstile 门；两者留空即关闭 |
 

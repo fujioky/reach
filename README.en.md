@@ -163,6 +163,7 @@ Run the test suite with `npm test`.
 | `AGENT_REACH_PWD` | yes* | reach-upstream password |
 | `NEXT_PUBLIC_SITE_URL` | no | Canonical origin for share links, OpenGraph and the analytics origin check; defaults to the Vercel production URL |
 | `CRON_SECRET` | no | Protects `/api/cron/*`; Vercel sends it automatically for scheduled jobs |
+| `REFRESH_JOB_TOKEN` | no | Enables `POST /api/jobs/x-refresh` (Bearer auth): each call from an external timer refreshes one older X mirror in the background; unset, the route is off |
 | `AI_PARSER_API_KEY` | no | Key for the optional LLM media resolver |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | no | Enable the Cloudflare Turnstile gate on visitor pages; leave both empty to disable |
 

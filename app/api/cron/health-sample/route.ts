@@ -5,8 +5,6 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { collectSystemHealth } from '@/lib/health/checks';
 import { appendHealthSample } from '@/lib/health/history';
-import { ensureJob } from '@/lib/mirror/refresh-job';
-import { after } from 'next/server';
 
 function resolveSiteOrigin(req: NextRequest): string {
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
@@ -28,8 +26,6 @@ export async function GET(req: NextRequest) {
   }
 
   const origin = resolveSiteOrigin(req);
-  // Backstop for the one-off background X refresh: start or resume it daily.
-  after(() => ensureJob(origin));
   const snapshot = await collectSystemHealth(origin, { publicLabels: true });
   const sample = await appendHealthSample(snapshot.services);
 

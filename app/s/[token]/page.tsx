@@ -34,8 +34,6 @@ import { threadVideoSrc, toThreadNodes } from '@/lib/mirror/thread-view';
 import { TableOfContents } from '@/app/_components/article/TableOfContents';
 import { after } from 'next/server';
 import { prefetchMissingReplies } from '@/lib/mirror/x-thread-expand';
-import { ensureJob } from '@/lib/mirror/refresh-job';
-import { headers } from 'next/headers';
 import { VideoSection } from './_components/VideoSection';
 import { StatsBar } from './_components/StatsBar';
 import { YouTubeActions } from './_components/YouTubeActions';
@@ -309,9 +307,6 @@ export default async function VisitorPage({
   // Replies X reports but the mirror lacks are fetched in the background, so
   // the next visitor sees each comment's first reply without waiting.
   after(() => prefetchMissingReplies(item.id));
-  // Visitor traffic also keeps the one-off background X refresh going.
-  const host = (await headers()).get('host');
-  if (host) after(() => ensureJob(`https://${host}`));
   // An X Article gets headings and an outline beside it.
   const isXArticle = (item.platformData as { xArticle?: boolean } | null)?.xArticle === true;
   // Reply context: the tweets this post answers, root first.
