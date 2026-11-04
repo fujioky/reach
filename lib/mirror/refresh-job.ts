@@ -95,13 +95,18 @@ function scheduleStep(origin: string, state: RefreshJobState, delayMs: number): 
   after(() => callStep(origin, state, delayMs));
 }
 
-/** A running job whose chain went quiet this long is resumed by ensureJob. */
-const STALLED_MS = RATE_LIMIT_PAUSE_MS + 10 * 60_000;
+/**
+ * A step overdue by this much means the chain broke (a step request lost to a
+ * deploy or an outage); ensureJob then picks it up again.
+ */
+const RESUME_GRACE_MS = 3 * 60_000;
 
 /**
  * Make sure the one-off job runs: start it if it never has, or restart its
- * step chain if it stalled (a step request lost to a deploy or an outage).
- * Call from a background context (after() or a cron); it awaits the step call.
+ * step chain if a step is overdue. Called in the background (after()) from
+ * admin pages, visitor pages and the daily cron, so ordinary traffic keeps
+ * the job going even when a step request is lost; the `seq` check means
+ * several callers at once still run one chain. Awaits the step call.
  */
 export async function ensureJob(origin: string): Promise<void> {
   const current = await load();
@@ -110,13 +115,7 @@ export async function ensureJob(origin: string): Promise<void> {
     return;
   }
   const { state, raw } = current;
-  if (state.status !== 'running') return;
-  const [row] = await db
-    .select({ updatedAt: appSettings.updatedAt })
-    .from(appSettings)
-    .where(eq(appSettings.key, STATE_KEY))
-    .limit(1);
-  if (!row || Date.now() - row.updatedAt.getTime() < STALLED_MS) return;
+  if (state.status !== 'running' || Date.now() < state.nextAt + RESUME_GRACE_MS) return;
   const resumed = { ...state, seq: state.seq + 1, nextAt: Date.now() };
   if (await compareAndSet(raw, resumed)) await callStep(origin, resumed, 0);
 }
