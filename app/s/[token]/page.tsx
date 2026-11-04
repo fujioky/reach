@@ -352,7 +352,14 @@ export default async function VisitorPage({
                   />
                 )}
                 <div data-track-block="body">
-                  <SurfaceCard className="overflow-hidden shadow-md">
+                  <SurfaceCard className="relative overflow-hidden shadow-md">
+                    {/* The reply line from the parent chain reaches this post's avatar. */}
+                    {(threadParents.length > 0 || thread?.parentMissing) && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-[41px] top-0 h-5 w-0.5 bg-border md:left-[47px] md:h-6"
+                      />
+                    )}
                     <div className="p-5 md:p-6">
                       <div className="flex items-start gap-3">
                         {author.avatarUrl ? (

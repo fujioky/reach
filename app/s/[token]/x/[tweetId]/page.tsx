@@ -81,17 +81,20 @@ export default async function OpenedPostPage({
         {(parents.length > 0 || payload.parentMissing) && (
           <ThreadParents parents={parents} parentMissing={payload.parentMissing} token={token} earlierMode="open" />
         )}
-        <SurfaceCard className="overflow-hidden p-5 shadow-md md:p-6">
+        <SurfaceCard className="relative overflow-hidden p-5 shadow-md md:p-6">
+          {(parents.length > 0 || payload.parentMissing) && (
+            <span aria-hidden="true" className="absolute left-[41px] top-0 h-5 w-0.5 bg-border md:left-[47px] md:h-6" />
+          )}
           <div className="flex items-start gap-3">
             {post!.author.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={proxyAvatar(post!.author.avatarUrl)}
                 alt={post!.author.name}
-                className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border/60"
+                className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border/60 md:h-12 md:w-12"
               />
             ) : (
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-lg font-bold text-muted">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-lg font-bold text-muted md:h-12 md:w-12">
                 {post!.author.name.charAt(0)}
               </div>
             )}

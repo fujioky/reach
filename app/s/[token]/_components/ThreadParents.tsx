@@ -60,15 +60,23 @@ export function ThreadParents({
   const direct = parents[parents.length - 1];
   if (!direct && !parentMissing) return null;
 
+  // Padding puts the avatars' centre on the same vertical as the post card's
+  // avatar below (card padding 20/24px + half of a 44/48px avatar = 42/48px),
+  // so the thread line runs straight from the parent to the post.
+  const boxPadding = 'px-[24px] md:px-[30px]';
+  const lineX = 'left-[41px] md:left-[47px]';
+
   if (!expanded) {
     return (
-      <div className="mb-3">
+      <div>
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="group relative block w-full overflow-hidden rounded-2xl border border-border/70 bg-surface/60 px-4 pt-4 text-left"
+          className={`group relative block w-full overflow-hidden rounded-2xl border border-border/70 bg-surface/60 ${boxPadding} pt-4 text-left`}
           aria-label="展开上文"
         >
+          {/* From the parent's avatar down to the bottom of the box. */}
+          {direct && <span aria-hidden="true" className={`absolute ${lineX} bottom-0 top-[56px] w-0.5 bg-border`} />}
           {direct ? (
             <div className="max-h-28 overflow-hidden">
               <CommentBody node={direct} />
@@ -80,13 +88,23 @@ export function ThreadParents({
             展开上文{parents.length > 1 ? `（${parents.length} 条）` : ''}
           </span>
         </button>
+        <GapLine />
       </div>
     );
   }
 
   return (
-    <div className="mb-3">
-      <div className="rounded-2xl border border-border/70 bg-surface/60 px-4">
+    <div>
+      <div className={`relative rounded-2xl border border-border/70 bg-surface/60 ${boxPadding}`}>
+        <div className="flex justify-end pt-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="text-[12px] text-muted transition-colors hover:text-ink"
+          >
+            收起上文
+          </button>
+        </div>
         {parentMissing && (
           <div className="border-b border-border/60 py-3">
             {earlierMode === 'open' ? (
@@ -110,7 +128,7 @@ export function ThreadParents({
           </div>
         )}
         {parents.map((post) => (
-          <div key={post.id} className="pt-4 last:pb-4">
+          <div key={post.id} className="pt-2 first:pt-1">
             {/* Thread line down to the next tweet (and the post below), as on X. */}
             <CommentBody node={post} threadLine>
               <Link
@@ -122,14 +140,17 @@ export function ThreadParents({
             </CommentBody>
           </div>
         ))}
+        {/* The last parent's line continues to the bottom of the box. */}
+        <div className="relative h-4">
+          <span aria-hidden="true" className="absolute bottom-0 left-[17px] top-0 w-0.5 bg-border" />
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={() => setExpanded(false)}
-        className="mt-1.5 text-[13px] text-muted transition-colors hover:text-ink"
-      >
-        收起上文
-      </button>
+      <GapLine />
     </div>
   );
+}
+
+/** The line across the gap between the chain and the post card. */
+function GapLine() {
+  return <div aria-hidden="true" className="ml-[41px] h-3 w-0.5 bg-border md:ml-[47px]" />;
 }
