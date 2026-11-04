@@ -26,8 +26,8 @@ import { isNotArticle } from '@/lib/article/queries';
 import { refreshMirror } from '@/lib/mirror/refresh';
 
 const STATE_KEY = 'x_refresh_job';
-/** 79 mirrors × 2 min ≈ 3 h: well inside a day and gentle on the X account. */
-export const GAP_MS = 2 * 60_000;
+/** One mirror every 5 minutes: 79 take about 6.5 hours, well inside a day, and the X account barely notices. */
+export const GAP_MS = 5 * 60_000;
 export const RATE_LIMIT_PAUSE_MS = 30 * 60_000;
 /** Longest a step waits before handing over to the next request. */
 const MAX_WAIT_MS = 60_000;
