@@ -18,6 +18,7 @@ import {
   analyticsChunks,
   appSettings,
   translationCache,
+  xPostCache,
 } from './schema';
 
 export const db = drizzle(); // auto-reads POSTGRES_URL env var
@@ -41,4 +42,5 @@ export {
   analyticsChunks,
   appSettings,
   translationCache,
+  xPostCache,
 };

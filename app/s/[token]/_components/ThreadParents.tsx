@@ -2,11 +2,16 @@
 
 // app/s/[token]/_components/ThreadParents.tsx
 // The tweets an X post replies to, shown above it like X's conversation view.
-// Collapsed by default; when the stored chain stops short of its root, the
-// visitor can load the earlier tweets (/api/x-thread), which are saved into
-// the mirror for the next visitor.
+//
+// Collapsed, only the tweet directly above shows, its lower half faded out;
+// clicking expands the whole chain, root first. Each tweet can be opened on its
+// own page under the same share (/s/<token>/x/<id>) — still read from this
+// mirror, never turned into a new mirror. When the stored chain stops short of
+// its root, the earlier tweets can be loaded (main page, saved into the
+// mirror) or opened (an opened post's page).
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type { ThreadNode } from '@/lib/mirror/thread-view';
 import { CommentBody } from './CommentListClient';
 
@@ -14,10 +19,13 @@ export function ThreadParents({
   parents: initial,
   parentMissing: initialMissing,
   token,
+  earlierMode = 'load',
 }: {
   parents: ThreadNode[];
   parentMissing: string | null;
   token: string;
+  /** 'load' fetches earlier tweets into the mirror; 'open' links to the earliest one's page. */
+  earlierMode?: 'load' | 'open';
 }) {
   const [parents, setParents] = useState(initial);
   const [parentMissing, setParentMissing] = useState(initialMissing);
@@ -49,29 +57,46 @@ export function ThreadParents({
     }
   }
 
-  const replyingTo = parents[parents.length - 1]?.author.handle;
+  const direct = parents[parents.length - 1];
+  if (!direct && !parentMissing) return null;
+
+  if (!expanded) {
+    return (
+      <div className="mb-3">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="group relative block w-full overflow-hidden rounded-2xl border border-border/70 bg-surface/60 px-4 pt-4 text-left"
+          aria-label="展开上文"
+        >
+          {direct ? (
+            <div className="max-h-28 overflow-hidden">
+              <CommentBody node={direct} />
+            </div>
+          ) : (
+            <div className="pb-4 text-[13px] text-muted">这是一条回复，上文未保存</div>
+          )}
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 flex h-16 items-end justify-center bg-gradient-to-b from-transparent to-paper pb-2 text-[13px] font-medium text-brand group-hover:text-brand-hover">
+            展开上文{parents.length > 1 ? `（${parents.length} 条）` : ''}
+          </span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-3">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <path d={expanded ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
-        </svg>
-        {expanded
-          ? '收起上文'
-          : replyingTo
-            ? `回复 @${replyingTo} · 查看上文（${parents.length} 条）`
-            : '这是一条回复 · 查看上文'}
-      </button>
-
-      {expanded && (
-        <div className="mt-2 rounded-2xl border border-border/70 bg-surface/60 px-4">
-          {parentMissing && (
-            <div className="border-b border-border/60 py-3">
+      <div className="rounded-2xl border border-border/70 bg-surface/60 px-4">
+        {parentMissing && (
+          <div className="border-b border-border/60 py-3">
+            {earlierMode === 'open' ? (
+              <Link
+                href={`/s/${token}/x/${parentMissing}`}
+                className="text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+              >
+                打开更早的帖子
+              </Link>
+            ) : (
               <button
                 type="button"
                 onClick={() => void loadEarlier()}
@@ -80,22 +105,33 @@ export function ThreadParents({
               >
                 {loading ? '加载中…' : '加载更早的帖子'}
               </button>
-              {error && <div className="mt-1 text-[13px] text-danger">{error}</div>}
+            )}
+            {error && <div className="mt-1 text-[13px] text-danger">{error}</div>}
+          </div>
+        )}
+        {parents.map((post) => (
+          <div key={post.id} className="relative py-4">
+            {/* Thread line down to the next tweet, as on X. */}
+            <span aria-hidden="true" className="absolute bottom-0 left-[17px] top-14 w-0.5 bg-border/70" />
+            <CommentBody node={post} />
+            <div className="ml-12 mt-1.5">
+              <Link
+                href={`/s/${token}/x/${post.id}`}
+                className="text-[12px] text-muted transition-colors hover:text-brand"
+              >
+                打开这条帖子 →
+              </Link>
             </div>
-          )}
-          {parents.map((post, index) => (
-            <div key={post.id} className="relative py-4">
-              {/* Thread line down to the next post, as on X. */}
-              <span
-                aria-hidden="true"
-                className="absolute bottom-0 left-[17px] top-14 w-0.5 bg-border/70"
-              />
-              <CommentBody node={post} />
-              {index === parents.length - 1 && <span className="sr-only">以下是被镜像的回复</span>}
-            </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => setExpanded(false)}
+        className="mt-1.5 text-[13px] text-muted transition-colors hover:text-ink"
+      >
+        收起上文
+      </button>
     </div>
   );
 }

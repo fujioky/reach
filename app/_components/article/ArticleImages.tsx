@@ -21,7 +21,7 @@ export interface ArticleImage {
 
 // ─── Full-screen viewer ──────────────────────────────────────────────────────
 
-function Viewer({
+export function Viewer({
   images,
   index,
   onClose,

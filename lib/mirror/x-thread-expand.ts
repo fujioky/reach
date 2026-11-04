@@ -13,6 +13,7 @@ import type { Comment, FetchedContent } from '@/lib/fetcher/types';
 import { buildCommentRecords } from '@/lib/mirror/comments';
 import { storeCommentImages } from '@/lib/mirror/comment-images';
 import { readThread, storeThread } from '@/lib/mirror/x-thread';
+import { openPost, statusUrl } from '@/lib/mirror/x-post-cache';
 import { toThreadNodes, type ThreadNode } from '@/lib/mirror/thread-view';
 
 type ContentItemRow = typeof contentItems.$inferSelect;
@@ -21,9 +22,6 @@ export type ExpandResult =
   | { ok: true; nodes: ThreadNode[]; parentMissing?: string | null }
   | { ok: false; status: number; error: string };
 
-function statusUrl(id: string): string {
-  return `https://x.com/i/status/${id}`;
-}
 
 /** Every stored comment of the item that sits below `rootId`, at any depth. */
 async function storedSubtree(contentItemId: string, rootId: string): Promise<ThreadNode[]> {
@@ -64,7 +62,13 @@ export async function expandReplies(item: ContentItemRow, commentId: string): Pr
     .from(comments)
     .where(and(eq(comments.contentItemId, item.id), eq(comments.platformCommentId, commentId)))
     .limit(1);
-  if (!target) return { ok: false, status: 404, error: 'not_in_mirror' };
+  // Not one of the mirror's own comments: a reply shown on an opened post's
+  // page. Its replies come from opening it (cached in x_post_cache).
+  if (!target) {
+    const opened = await openPost(item, commentId);
+    if (!opened.ok) return opened;
+    return { ok: true, nodes: await toThreadNodes(opened.payload.replies) };
+  }
 
   let content: FetchedContent;
   try {

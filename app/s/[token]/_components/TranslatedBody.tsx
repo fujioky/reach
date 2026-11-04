@@ -14,7 +14,8 @@
 //   splitByParagraph  — true (default): split on blank lines; false: single unit
 //   initialTranslations — server-prefetched Map to seed into context on first mount
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Viewer } from '@/app/_components/article/ArticleImages';
 import { useTranslation } from './TranslationContext';
 import { bodyImageUrl } from '@/lib/content/body-images';
 
@@ -35,6 +36,22 @@ interface TranslatedBodyProps {
    * it is never shown as text or sent for translation.
    */
   inlineImages?: Record<string, string>;
+  /**
+   * Render `#`-marked paragraphs as headings (h2 for # and ##, h3 below) with
+   * ids, so a TableOfContents can outline them. X Articles only.
+   */
+  headings?: boolean;
+  /** Prefix for heading ids; also the outline's container id is up to the caller. */
+  headingIdPrefix?: string;
+}
+
+const HEADING_RE = /^(#{1,6})\s+(.+)$/;
+
+/** Heading level and text when the paragraph is a single `#` line. */
+function parseHeading(para: string): { level: number; text: string } | null {
+  if (para.includes('\n')) return null;
+  const m = HEADING_RE.exec(para);
+  return m ? { level: m[1]!.length, text: m[2]!.trim() } : null;
 }
 
 function splitParagraphs(text: string): string[] {
@@ -80,21 +97,33 @@ export function TranslatedBody({
   splitByParagraph = true,
   initialTranslations,
   inlineImages = {},
+  headings = false,
+  headingIdPrefix = 'h',
 }: TranslatedBodyProps) {
   const ctx = useTranslation();
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const paragraphs = splitByParagraph
     ? splitParagraphs(text)
     : [text.trim()].filter(Boolean);
+  // What gets translated: a heading's text without its `#` marker.
+  const translatable = (p: string) => (headings ? (parseHeading(p)?.text ?? p) : p);
+  // Inline images in order, for the full-screen viewer's prev/next.
+  const viewerImages = paragraphs.flatMap((p) => {
+    const url = bodyImageUrl(p);
+    const src = url ? inlineImages[url] : undefined;
+    return src ? [{ src, alt: '' }] : [];
+  });
 
   // On mount and when ctx.enabled changes, enqueue paragraphs that aren't
   // yet translated AND aren't already in Simplified Chinese (no point translating
   // Chinese to Chinese — wastes DeepL quota and shows a redundant line).
   useEffect(() => {
     if (!ctx || !ctx.enabled) return;
-    const missing = paragraphs.filter(
-      (p) => !ctx.translations.has(p) && !isChinese(p) && !bodyImageUrl(p),
-    );
+    const missing = paragraphs
+      .filter((p) => !bodyImageUrl(p))
+      .map(translatable)
+      .filter((p) => !ctx.translations.has(p) && !isChinese(p));
     if (missing.length > 0) ctx.enqueue(missing);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx?.enabled]);
@@ -114,23 +143,45 @@ export function TranslatedBody({
           const imageUrl = bodyImageUrl(para);
           if (imageUrl) {
             const src = inlineImages[imageUrl];
-            return src ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+            if (!src) return null;
+            const index = viewerImages.findIndex((img) => img.src === src);
+            return (
+              <button
                 key={i}
-                src={src}
-                alt=""
-                loading="lazy"
-                className="my-1 w-full rounded-xl ring-1 ring-border/50"
-              />
-            ) : null;
+                type="button"
+                onClick={() => setViewerIndex(index)}
+                aria-label="查看图片"
+                className="my-1 block w-full cursor-zoom-in overflow-hidden rounded-xl ring-1 ring-border/50 transition-shadow hover:shadow-lg"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" loading="lazy" className="w-full" />
+              </button>
+            );
           }
+          const heading = headings ? parseHeading(para) : null;
+          const source = heading ? heading.text : para;
           // Skip translation entirely for Chinese content (already the target language)
-          const skipTranslation = isChinese(para);
+          const skipTranslation = isChinese(source);
           const translation = ctx?.enabled && !skipTranslation
-            ? ctx.translations.get(para)
+            ? ctx.translations.get(source)
             : undefined;
           const isLoading = ctx?.enabled && !skipTranslation && !translation && ctx.loading;
+          if (heading) {
+            const Tag = heading.level <= 2 ? 'h2' : 'h3';
+            return (
+              <div key={i} className={heading.level <= 2 ? 'mt-4' : 'mt-2'}>
+                <Tag
+                  id={`${headingIdPrefix}-${i}`}
+                  className={`scroll-mt-24 font-display font-bold leading-snug text-ink ${
+                    heading.level <= 2 ? 'text-[1.25em]' : 'text-[1.1em]'
+                  }`}
+                >
+                  {heading.text}
+                </Tag>
+                {translation && <p className="mt-1 text-[0.92em] text-muted/70">{translation}</p>}
+              </div>
+            );
+          }
           return (
             <div key={i}>
               <p className="whitespace-pre-wrap leading-relaxed">{para}</p>
@@ -146,6 +197,14 @@ export function TranslatedBody({
           );
         })}
       </div>
+      {viewerIndex !== null && viewerImages.length > 0 && (
+        <Viewer
+          images={viewerImages}
+          index={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          onNavigate={setViewerIndex}
+        />
+      )}
     </div>
   );
 }

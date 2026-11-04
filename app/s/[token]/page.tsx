@@ -31,6 +31,7 @@ import { CommentList } from './_components/CommentList';
 import { ThreadParents } from './_components/ThreadParents';
 import { readThread } from '@/lib/mirror/x-thread';
 import { toThreadNodes } from '@/lib/mirror/thread-view';
+import { TableOfContents } from '@/app/_components/article/TableOfContents';
 import { VideoSection } from './_components/VideoSection';
 import { StatsBar } from './_components/StatsBar';
 import { YouTubeActions } from './_components/YouTubeActions';
@@ -299,6 +300,8 @@ export default async function VisitorPage({
   // Blob URLs here (plain tweets have none and skip the query).
   const inlineUrls = bodyImageUrls(item.body);
   const inlineImages = await presignInlineImages(item.id, inlineUrls);
+  // An X Article gets headings and an outline beside it.
+  const isXArticle = (item.platformData as { xArticle?: boolean } | null)?.xArticle === true;
   // Reply context: the tweets this post answers, root first.
   const thread = readThread(item.platformData);
   const threadParents = thread
@@ -313,6 +316,11 @@ export default async function VisitorPage({
 
         <div className="relative mx-auto max-w-[1100px] px-4 pb-12 md:px-6">
           <div className="flex justify-center py-6 md:py-10">
+            {isXArticle && (
+              <aside className="order-last ml-10 hidden w-56 shrink-0 self-stretch xl:block">
+                <TableOfContents containerId="x-article-body" />
+              </aside>
+            )}
             <div className="w-full max-w-[600px]">
               {daysLeft !== null && daysLeft > 0 && (
                 <ShareAccessBanner daysLeft={daysLeft} createdBy={item.createdBy ?? 'admin'} />
@@ -350,11 +358,15 @@ export default async function VisitorPage({
                         <span className="shrink-0 opacity-90">{X_LOGO}</span>
                       </div>
 
-                      <TranslatedBody
-                        text={item.body}
-                        className="mt-4 text-[15px] leading-[1.65] text-ink"
-                        inlineImages={inlineImages}
-                      />
+                      <div id="x-article-body">
+                        <TranslatedBody
+                          text={item.body}
+                          className="mt-4 text-[15px] leading-[1.65] text-ink"
+                          inlineImages={inlineImages}
+                          headings={isXArticle}
+                          headingIdPrefix="section"
+                        />
+                      </div>
 
                       <div data-track-block="gallery">
                         <Suspense fallback={<GallerySkeleton />}>

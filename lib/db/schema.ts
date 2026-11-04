@@ -130,6 +130,30 @@ export const comments = pgTable('comments', {
 });
 
 /**
+ * x_post_cache — X posts opened from a mirror's thread without becoming
+ * mirrors themselves: a parent the visitor clicked through to, or a reply
+ * whose own replies were loaded on that page. One row per (mirror, tweet),
+ * written the first time someone opens it and read by later visitors.
+ * `payload` is an XPostCachePayload (lib/mirror/x-post-cache.ts); images in
+ * it are already copied to Blob.
+ */
+export const xPostCache = pgTable(
+  'x_post_cache',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    contentItemId: uuid('content_item_id')
+      .notNull()
+      .references(() => contentItems.id, { onDelete: 'cascade' }),
+    tweetId: text('tweet_id').notNull(),
+    payload: jsonb('payload').notNull(),
+    fetchedAt: timestamp('fetched_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    contentItemTweetIdx: uniqueIndex('x_post_cache_content_item_tweet_unique').on(table.contentItemId, table.tweetId),
+  }),
+);
+
+/**
  * article_comments — visitor-submitted comments on self-authored articles.
  *
  * Deliberately NOT the `comments` table: that one holds platform-native

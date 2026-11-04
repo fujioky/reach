@@ -4,15 +4,16 @@
 // Renders the comments as a reply tree. Translation is controlled globally by
 // PageTranslationShell — no local toggle here.
 //
-// Nodes arrive flat and nest by `inReplyTo`. Replies under a comment start
-// collapsed; expanding shows the stored ones, and on X, when the platform
-// reports more than are stored, offers to load them (/api/x-thread), which
-// also saves them into the mirror for later visitors.
+// Nodes arrive flat and nest by `inReplyTo`. Each comment shows its first
+// reply, as X does; the rest sit behind 「展开更多回复」, which on X also loads
+// replies the platform reports but the mirror has not stored (/api/x-thread),
+// saving them for later visitors.
 
 import { useMemo, useState } from 'react';
 import type { ThreadNode } from '@/lib/mirror/thread-view';
 import { TranslatedBody } from './TranslatedBody';
 import { XImageGrid } from './XImageGrid';
+import { proxyAvatar } from './proxy-avatar';
 
 export type CommentData = ThreadNode;
 
@@ -25,10 +26,6 @@ interface CommentListClientProps {
 /** Indentation stops growing past this depth so deep threads stay readable. */
 const MAX_INDENT_DEPTH = 4;
 
-export function proxyAvatar(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  return `/api/proxy-avatar?url=${encodeURIComponent(url)}`;
-}
 
 export function CommentListClient({ comments: initial, token }: CommentListClientProps) {
   const [nodes, setNodes] = useState(initial);
@@ -90,6 +87,9 @@ function CommentNode({
 
   const total = Math.max(node.replyCount, loaded.length);
   const canLoadMore = Boolean(token) && !fetched && node.replyCount > loaded.length;
+  // One reply shows by default, as on X; the rest wait behind a button.
+  const visible = expanded ? loaded : loaded.slice(0, 1);
+  const hidden = total - visible.length;
 
   async function loadMore() {
     if (!token) return;
@@ -113,28 +113,20 @@ function CommentNode({
     }
   }
 
-  function toggle() {
-    const next = !expanded;
-    setExpanded(next);
-    // Nothing stored yet: expanding is the same as asking for the replies.
-    if (next && loaded.length === 0 && canLoadMore) void loadMore();
+  function showMore() {
+    setExpanded(true);
+    // The platform reports more replies than are stored: fetch them too.
+    if (canLoadMore) void loadMore();
   }
 
   return (
     <div className="py-4">
       <CommentBody node={node} />
-      {(total > 0 || loaded.length > 0) && (
+      {total > 0 && (
         <div className={depth < MAX_INDENT_DEPTH ? 'ml-12' : ''}>
-          <button
-            type="button"
-            onClick={toggle}
-            className="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
-          >
-            {expanded ? '收起回复' : `展开 ${total} 条回复`}
-          </button>
-          {expanded && (
+          {visible.length > 0 && (
             <div className="mt-1 border-l-2 border-border/70 pl-3">
-              {loaded.map((child) => (
+              {visible.map((child) => (
                 <CommentNode
                   key={child.id}
                   node={child}
@@ -144,23 +136,34 @@ function CommentNode({
                   onLoaded={onLoaded}
                 />
               ))}
-              {canLoadMore && loaded.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => void loadMore()}
-                  disabled={loading}
-                  className="py-2 text-[13px] text-muted transition-colors hover:text-ink disabled:opacity-60"
-                >
-                  {loading ? '加载中…' : `加载更多回复（共 ${node.replyCount} 条）`}
-                </button>
-              )}
-              {loading && loaded.length === 0 && <div className="py-2 text-[13px] text-muted">加载中…</div>}
-              {!loading && fetched && loaded.length === 0 && (
-                <div className="py-2 text-[13px] text-subtle">没有可显示的回复</div>
-              )}
-              {error && <div className="py-2 text-[13px] text-danger">{error}</div>}
             </div>
           )}
+          {loading ? (
+            <div className="py-2 text-[13px] text-muted">加载中…</div>
+          ) : hidden > 0 && (!expanded || canLoadMore) ? (
+            <button
+              type="button"
+              onClick={showMore}
+              className="mt-2 text-[13px] font-medium text-brand transition-colors hover:text-brand-hover"
+            >
+              {visible.length === 0 ? `展开 ${total} 条回复` : `展开更多回复（还有 ${hidden} 条）`}
+            </button>
+          ) : (
+            expanded &&
+            loaded.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                className="mt-2 text-[13px] text-muted transition-colors hover:text-ink"
+              >
+                收起回复
+              </button>
+            )
+          )}
+          {!loading && fetched && loaded.length === 0 && (
+            <div className="py-2 text-[13px] text-subtle">没有可显示的回复</div>
+          )}
+          {error && <div className="py-2 text-[13px] text-danger">{error}</div>}
         </div>
       )}
     </div>
