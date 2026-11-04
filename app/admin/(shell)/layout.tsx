@@ -9,6 +9,9 @@
 // in the database, even though proxy.ts already gated the request.
 
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
+import { headers } from 'next/headers';
+import { ensureJob } from '@/lib/mirror/refresh-job';
 import { auth } from '@/auth';
 import { PageBackground } from '@/app/_components/layout/PageBackground';
 import { ThemeToggle } from '@/app/_components/theme/ThemeToggle';
@@ -26,6 +29,10 @@ export default async function AdminLayout({
   }
 
   const username = session.user.name ?? '管理员';
+
+  // Keeps the one-off background X refresh going (lib/mirror/refresh-job.ts).
+  const host = (await headers()).get('host');
+  if (host) after(() => ensureJob(`https://${host}`));
 
   return (
     <div className="flex h-dvh overflow-hidden bg-paper font-sans">

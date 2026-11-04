@@ -12,8 +12,7 @@ import { auth } from '@/auth';
 import { fetchContent } from '@/lib/fetcher';
 import { FetcherError } from '@/lib/fetcher/errors';
 import { db, contentItems, media, comments, shares, refreshPreviews } from '@/lib/db';
-import { eq, and, asc, sql } from 'drizzle-orm';
-import { isNotArticle } from '@/lib/article/queries';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { prefetchMissingReplies } from '@/lib/mirror/x-thread-expand';
@@ -567,20 +566,4 @@ export async function refreshTranscriptAction(
 
   revalidatePath(`/admin/mirrors/${parsed.data}`);
   return { ok: true, found: result.found, lang: result.lang };
-}
-
-// ─── listXMirrorIds ──────────────────────────────────────────────────
-// Every X mirror, oldest refresh first, for 「刷新全部 X 镜像」: the list page
-// shows only 50, and the client refreshes them one by one with refreshMirror
-// so no single request outlives the function timeout.
-
-export async function listXMirrorIds(): Promise<{ ok: boolean; ids?: string[]; error?: string }> {
-  const session = await auth();
-  if (!session?.user) return { ok: false, error: 'Unauthorized' };
-  const rows = await db
-    .select({ id: contentItems.id })
-    .from(contentItems)
-    .where(and(eq(contentItems.platform, 'x'), isNotArticle))
-    .orderBy(asc(sql`coalesce(${contentItems.refreshedAt}, ${contentItems.createdAt})`));
-  return { ok: true, ids: rows.map((r) => r.id) };
 }

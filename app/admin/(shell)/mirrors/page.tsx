@@ -13,7 +13,6 @@ import { db, contentItems, shares } from '@/lib/db';
 import { isNotArticle } from '@/lib/article/queries';
 import { ContentRow, type ShareRow } from './_components/ContentRow';
 import { xKindLabel } from '@/lib/mirror/kind-label';
-import { RefreshAllXButton } from './_components/RefreshAllXButton';
 import { ListPager, parsePageParams } from './_components/ListPager';
 
 function platformLabel(platform: string | null | undefined): string {
@@ -78,12 +77,9 @@ export default async function ContentListPage({
         label="内容"
         title="内容管理"
         actions={
-          <div className="flex items-center gap-2">
-            <RefreshAllXButton />
-            <Link href="/admin/mirrors/new" className="ds-btn-primary text-sm">
-              + 创建镜像
-            </Link>
-          </div>
+          <Link href="/admin/mirrors/new" className="ds-btn-primary text-sm">
+            + 创建镜像
+          </Link>
         }
       />
 
