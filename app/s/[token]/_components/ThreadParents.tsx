@@ -150,7 +150,10 @@ export function ThreadParents({
   );
 }
 
-/** The line across the gap between the chain and the post card. */
+/**
+ * The line across the gap between the chain and the post card. It sits outside
+ * both boxes, so it adds their 1px border to the 41/47px the lines inside use.
+ */
 function GapLine() {
-  return <div aria-hidden="true" className="ml-[41px] h-3 w-0.5 bg-border md:ml-[47px]" />;
+  return <div aria-hidden="true" className="ml-[42px] h-3 w-0.5 bg-border md:ml-[48px]" />;
 }
