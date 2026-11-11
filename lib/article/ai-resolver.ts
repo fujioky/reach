@@ -171,6 +171,82 @@ function readResponseText(payload: unknown): string {
   return parts.join('');
 }
 
+/**
+ * Google's Gemini API (generativelanguage.googleapis.com) has no OpenAI
+ * Responses endpoint — its OpenAI-compatible layer answers /responses with
+ * 404 — so it is spoken to natively: generateContent with the key header.
+ */
+export function isGeminiBase(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).hostname === 'generativelanguage.googleapis.com';
+  } catch {
+    return false;
+  }
+}
+
+/** One request body per provider, sharing the system/user split and limits. */
+export function modelRequest(
+  config: AiParserConfig,
+  system: string | null,
+  user: string,
+  opts: { json: boolean; maxTokens: number },
+): { url: string; init: RequestInit } {
+  if (isGeminiBase(config.baseUrl)) {
+    return {
+      url: `${config.baseUrl}/models/${encodeURIComponent(config.model)}:generateContent`,
+      init: {
+        method: 'POST',
+        headers: { 'x-goog-api-key': config.apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+          contents: [{ role: 'user', parts: [{ text: user }] }],
+          generationConfig: {
+            ...(opts.json ? { responseMimeType: 'application/json' } : {}),
+            maxOutputTokens: opts.maxTokens,
+            // Same intent as `thinking: disabled` below: extraction, not reasoning.
+            thinkingConfig: { thinkingLevel: 'low' },
+          },
+        }),
+      },
+    };
+  }
+  return {
+    url: `${config.baseUrl}/responses`,
+    init: {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: config.model,
+        input: system
+          ? [
+              { role: 'system', content: system },
+              { role: 'user', content: user },
+            ]
+          : user,
+        ...(opts.json ? { text: { format: { type: 'json_object' } } } : {}),
+        // Extraction is pattern recognition over text that is already in the
+        // prompt, not a reasoning problem — and the admin is watching a
+        // progress bar while this runs.
+        thinking: { type: 'disabled' },
+        max_output_tokens: opts.maxTokens,
+        ...(opts.json ? { stream: false } : {}),
+      }),
+    },
+  };
+}
+
+/** Gemini's answer text, without thought parts. */
+export function readGeminiText(payload: unknown): string {
+  const body = payload as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: unknown; thought?: unknown }> } }>;
+  };
+  const parts = body.candidates?.[0]?.content?.parts ?? [];
+  return parts
+    .filter((p) => !p.thought && typeof p.text === 'string')
+    .map((p) => p.text as string)
+    .join('');
+}
+
 function absolutize(raw: unknown, base: string): string | null {
   if (typeof raw !== 'string') return null;
   const value = raw.trim();
@@ -210,28 +286,8 @@ export async function askAiForMedia(
 
   let payload: unknown;
   try {
-    const res = await fetch(`${config.baseUrl}/responses`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: config.model,
-        input: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        text: { format: { type: 'json_object' } },
-        // Extraction is pattern recognition over text that is already in the
-        // prompt, not a reasoning problem — and the admin is watching a
-        // progress bar while this runs.
-        thinking: { type: 'disabled' },
-        max_output_tokens: 2048,
-        stream: false,
-      }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    const req = modelRequest(config, SYSTEM_PROMPT, userPrompt, { json: true, maxTokens: 2048 });
+    const res = await fetch(req.url, { ...req.init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
@@ -243,7 +299,9 @@ export async function askAiForMedia(
     return null;
   }
 
-  const parsed = parseJsonReply(readResponseText(payload));
+  const parsed = parseJsonReply(
+    isGeminiBase(config.baseUrl) ? readGeminiText(payload) : readResponseText(payload),
+  );
   if (!parsed || typeof parsed !== 'object') return null;
 
   const body = parsed as {
@@ -284,20 +342,8 @@ export async function probeAiParser(
 ): Promise<{ ok: boolean; latencyMs: number; status?: number; error?: string }> {
   const t0 = Date.now();
   try {
-    const res = await fetch(`${config.baseUrl}/responses`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: config.model,
-        input: '只回复 ok 两个字符。',
-        max_output_tokens: 512,
-        thinking: { type: 'disabled' },
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
+    const req = modelRequest(config, null, '只回复 ok 两个字符。', { json: false, maxTokens: 512 });
+    const res = await fetch(req.url, { ...req.init, signal: AbortSignal.timeout(20_000) });
     const latencyMs = Date.now() - t0;
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
