@@ -12,12 +12,13 @@
 
 import { useEffect } from 'react';
 import { useTranslation } from './TranslationContext';
+import { needsZhTranslation } from '@/lib/translation/lang';
 
 export function TranslatedTitleUpdater({ title }: { title: string }) {
   const ctx = useTranslation();
 
   useEffect(() => {
-    if (!ctx || !ctx.enabled || !title) return;
+    if (!ctx || !ctx.enabled || !title || !needsZhTranslation(title)) return;
     // Enqueue the title for translation if not already cached
     if (!ctx.translations.has(title)) {
       ctx.enqueue([title]);
@@ -26,7 +27,7 @@ export function TranslatedTitleUpdater({ title }: { title: string }) {
 
   // Update document.title when the translation becomes available
   useEffect(() => {
-    if (!ctx || !ctx.enabled || !title) return;
+    if (!ctx || !ctx.enabled || !title || !needsZhTranslation(title)) return;
     const translated = ctx.translations.get(title);
     if (translated) {
       document.title = `${translated} — Reach`;

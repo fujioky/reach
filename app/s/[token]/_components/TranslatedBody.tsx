@@ -14,10 +14,11 @@
 //   splitByParagraph  — true (default): split on blank lines; false: single unit
 //   initialTranslations — server-prefetched Map to seed into context on first mount
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Viewer } from '@/app/_components/article/ArticleImages';
 import { useTranslation } from './TranslationContext';
 import { bodyImageUrl } from '@/lib/content/body-images';
+import { needsZhTranslation } from '@/lib/translation/lang';
 
 interface TranslatedBodyProps {
   text: string;
@@ -58,39 +59,6 @@ function splitParagraphs(text: string): string[] {
   return text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
 }
 
-/**
- * Detect whether a text is already Chinese (Simplified or Traditional).
- * If so, translating to ZH is a no-op — skip it to save DeepL quota and
- * avoid showing a redundant "translation" line under the original.
- *
- * Heuristic: count CJK Unified Ideographs vs total non-whitespace characters.
- * If ≥40% are CJK, the text is predominantly Chinese. This works for both
- * Simplified and Traditional — both should be skipped since DeepL's target
- * is ZH (Simplified). Traditional Chinese → Simplified conversion is a
- * nice-to-have but not worth the quota cost for what is already readable.
- *
- * For non-Chinese text (English, Japanese kana, Korean, etc.) the CJK ratio
- * will be low or zero, so translation proceeds normally.
- */
-function isChinese(text: string): boolean {
-  const chars = text.replace(/\s/g, '');
-  if (chars.length === 0) return false;
-
-  let cjkCount = 0;
-  for (const ch of chars) {
-    const code = ch.codePointAt(0)!;
-    // CJK Unified Ideographs + CJK Extension A
-    if ((code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3400 && code <= 0x4dbf)) {
-      cjkCount++;
-    }
-  }
-
-  if (cjkCount === 0) return false;
-
-  // 40% threshold allows mixed content (Chinese text with URLs/emojis/English terms)
-  return cjkCount / chars.length >= 0.4;
-}
-
 export function TranslatedBody({
   text,
   className = '',
@@ -103,11 +71,19 @@ export function TranslatedBody({
   const ctx = useTranslation();
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
-  const paragraphs = splitByParagraph
-    ? splitParagraphs(text)
-    : [text.trim()].filter(Boolean);
+  const paragraphs = useMemo(
+    () => (splitByParagraph ? splitParagraphs(text) : [text.trim()].filter(Boolean)),
+    [text, splitByParagraph],
+  );
   // What gets translated: a heading's text without its `#` marker.
   const translatable = (p: string) => (headings ? (parseHeading(p)?.text ?? p) : p);
+  // Per paragraph: does it have anything to translate? Chinese paragraphs, inline
+  // images and lines that are only links / @handles / emoji are left alone.
+  const needsTranslation = useMemo(
+    () => paragraphs.map((p) => !bodyImageUrl(p) && needsZhTranslation(translatable(p))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [paragraphs, headings],
+  );
   // Inline images in order, for the full-screen viewer's prev/next.
   const viewerImages = paragraphs.flatMap((p) => {
     const url = bodyImageUrl(p);
@@ -116,14 +92,14 @@ export function TranslatedBody({
   });
 
   // On mount and when ctx.enabled changes, enqueue paragraphs that aren't
-  // yet translated AND aren't already in Simplified Chinese (no point translating
-  // Chinese to Chinese — wastes DeepL quota and shows a redundant line).
+  // yet translated and have something to translate (no point sending Chinese
+  // to DeepL — wastes quota and shows a redundant line).
   useEffect(() => {
     if (!ctx || !ctx.enabled) return;
     const missing = paragraphs
-      .filter((p) => !bodyImageUrl(p))
+      .filter((_, i) => needsTranslation[i])
       .map(translatable)
-      .filter((p) => !ctx.translations.has(p) && !isChinese(p));
+      .filter((p) => !ctx.translations.has(p));
     if (missing.length > 0) ctx.enqueue(missing);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx?.enabled]);
@@ -160,8 +136,7 @@ export function TranslatedBody({
           }
           const heading = headings ? parseHeading(para) : null;
           const source = heading ? heading.text : para;
-          // Skip translation entirely for Chinese content (already the target language)
-          const skipTranslation = isChinese(source);
+          const skipTranslation = !needsTranslation[i];
           const translation = ctx?.enabled && !skipTranslation
             ? ctx.translations.get(source)
             : undefined;
